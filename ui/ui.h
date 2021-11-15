@@ -733,6 +733,7 @@ namespace bwgame
 		native_window::window wnd;
 		bool create_window = true;
 		bool draw_ui_elements = true;
+		bool draw_ui_minimap = true;
 
 		bool exit_on_close = true;
 		bool window_closed = false;
@@ -2573,7 +2574,10 @@ namespace bwgame
 
 			draw_callback(data, indexed_surface->pitch);
 
-			draw_minimap(data, indexed_surface->pitch);
+			if (draw_ui_minimap)
+			{
+				draw_minimap(data, indexed_surface->pitch);
+			}
 
 			if (draw_ui_elements)
 			{

@@ -78,6 +78,8 @@ struct main_t
 	int fps_counter = 0;
 
 	a_map<int, std::unique_ptr<saved_state>> saved_states;
+	unit_t* screen_show_unit = NULL;
+	int screen_show_unit_cooldown = 0;
 
 
 	void reset()
@@ -205,7 +207,33 @@ struct main_t
 			
 			gifEncoder.push(GifEncoder::PIXEL_FORMAT_RGBA, (uint8_t*)px, w, h, delay);
 
-			//screen_pos = xy(32 * x - view_width / 2, 32 * y - view_height / 2);
+			if (!screen_show_unit && screen_show_unit_cooldown == 0) {
+				for (size_t i = 7; i != 0;) {
+					--i;
+					for (unit_t* u : ptr(ui.st.player_units[i])) {
+						if (!ui.unit_visble_on_minimap(u)) continue;
+						if (u->air_weapon_cooldown || u->ground_weapon_cooldown) {
+							screen_show_unit = u;
+							screen_show_unit_cooldown = 5 + std::rand() % 5;
+						}
+					}
+				}
+			}
+			if (screen_show_unit) {
+				unit_t* u = screen_show_unit;
+				if (screen_show_unit_cooldown) {
+					ui.screen_pos = xy(u->position.x - ui.view_width / 2,  u->position.y - ui.view_height / 2);
+					ui.draw_ui_minimap = false;
+				}
+				else {
+					ui.draw_ui_minimap = true;
+					screen_show_unit = NULL;
+					screen_show_unit_cooldown = 10 + std::rand() % 5;
+				}
+			}
+			if (screen_show_unit_cooldown) {
+				screen_show_unit_cooldown--;
+			}
 		}
 		else {
 			log("saving gif");
@@ -1210,7 +1238,7 @@ int main()
 #ifdef TITAN_WRITEGIF
 	screen_width = ui.game_st.map_tile_width+4;
 	screen_height = ui.game_st.map_tile_height+4;
-	ui.create_window = false;
+	ui.create_window = true;
 	ui.draw_ui_elements = false;
 	ui.game_speed = fp8::integer(8000);
 #endif
@@ -1231,7 +1259,7 @@ int main()
 
 	//set_malloc_fail_handler(malloc_fail_handler);
 #ifdef TITAN_WRITEGIF
-	int numFrames = ui.replay_st.end_frame / 4000;
+	int numFrames = ui.replay_st.end_frame / 8000;
 	int preAllocSize = screen_width * screen_height * 3 * numFrames;
 
 	if (!gifEncoder.open("test.gif", screen_width, screen_height, 30, true, 0, 0)) {
