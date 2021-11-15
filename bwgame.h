@@ -296,7 +296,7 @@ struct state_base_non_copyable {
 	intrusive_list<unit_t, void, &unit_t::cloaked_unit_link> cloaked_units;
 	intrusive_list<unit_t, psionic_matrix_link_f> psionic_matrix_units;
 
-	object_container<unit_t, 1700, 17> units_container;
+	object_container<unit_t, 3400, 17> units_container;
 
 	intrusive_list<bullet_t, default_link_f> active_bullets;
 	object_container<bullet_t, 100, 10> bullets_container;
@@ -636,13 +636,13 @@ struct state_functions {
 		if (!idx) return nullptr;
 		unit_t* u = get_unit(idx - 1);
 		if (!u) return nullptr;
-		if (u->unit_id_generation % (1u << (int_bits<T>::value - 11)) != id.generation()) return nullptr;
+		if (u->unit_id_generation % (1u << (int_bits<T>::value - 13)) != id.generation()) return nullptr;
 		return u;
 	}
 
 	unit_id get_unit_id(const unit_t* u) const {
 		if (!u) return unit_id{};
-		return unit_id(u->index + 1, u->unit_id_generation % (1u << 5));
+		return unit_id(u->index + 1, u->unit_id_generation % (1u << 3));
 	}
 
 	unit_id_32 get_unit_id_32(const unit_t* u) const {
@@ -19546,7 +19546,7 @@ struct state_copier {
 	state_functions funcs;
 	state_copier(const state&st, state& r) : st(st), r(r), funcs(r) {}
 
-	std::array<bool, 1700> unit_copied{};
+	std::array<bool, 3400> unit_copied{};
 	std::array<bool, 100> bullet_copied{};
 	std::array<bool, 2500> sprite_copied{};
 	std::array<bool, 5000> image_copied{};
@@ -21613,7 +21613,7 @@ struct game_load_functions : state_functions {
 					continue;
 				}
 
-				unit_t* u = create_initial_unit(unit_type, {x, y}, owner);
+				unit_t* u = create_initial_unit(unit_type, { x, y }, owner);
 
 				if (!u) continue;
 

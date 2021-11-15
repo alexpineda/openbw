@@ -1013,6 +1013,26 @@ struct action_functions: state_functions {
 		return action_select(owner, units);
 	}
 
+	/*uint16_t to_bw_tag(uint16_t scr_tag) {
+		auto index = 1700 - (3400 - (scr_tag & 0x1fff));
+		auto generation = scr_tag >> 13;
+		return index | (generation << 11);
+	}*/
+
+	//template<typename reader_T>
+	//bool read_action_select_ext(int owner, reader_T&& r) {
+	//	size_t n = r.template get<uint8_t>();
+	//	if (n > 12) error("invalid selection of %d units", n);
+	//	static_vector<unit_t*, 12> units;
+	//	for (size_t i = 0; i != n; ++i) {
+	//		auto tag = to_bw_tag(r.template get<uint16_t>());
+	//		auto uid = unit_id(tag);
+	//		auto unk = r.template get<uint16_t>();
+	//		units.push_back(get_unit(uid));
+	//	}
+	//	return action_select(owner, units);
+	//}
+
 	template<typename reader_T>
 	bool read_action_shift_select(int owner, reader_T&& r) {
 		size_t n = r.template get<uint8_t>();
