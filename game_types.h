@@ -875,6 +875,8 @@ namespace bwgame
 		std::array<bool, 4> unit_finder_visited;
 		size_t unit_finder_index_from;
 		size_t unit_finder_index_to;
+
+		int tr_minimap_attack_blink;
 	};
 
 } // namespace bwgame

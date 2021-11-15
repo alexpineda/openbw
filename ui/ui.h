@@ -40,6 +40,7 @@ namespace bwgame
 		std::array<pcx_image, 7> light_pcx;
 		grp_t creep_grp;
 		int resource_minimap_color;
+		int minimap_blink_color;
 		std::array<uint8_t, 256> cloak_fade_selector;
 	};
 
@@ -323,6 +324,7 @@ namespace bwgame
 			return best_index;
 		};
 		img.resource_minimap_color = get_nearest_color(0, 255, 255);
+		img.minimap_blink_color = get_nearest_color(255, 255, 255);
 
 		for (size_t i = 0; i != 256; ++i)
 		{
@@ -1821,6 +1823,18 @@ namespace bwgame
 					}
 					if (w < 2) w = 2;
 					if (h < 2) h = 2;
+					
+					if (u->tr_minimap_attack_blink == 0 && (u->air_weapon_cooldown || u->ground_weapon_cooldown)) {
+						u->tr_minimap_attack_blink = 0b111000111000111000111;
+
+					}
+					if (u->tr_minimap_attack_blink & 1) {
+						color = tileset_img.minimap_blink_color;
+					}
+					if (u->tr_minimap_attack_blink) {
+						u->tr_minimap_attack_blink = u->tr_minimap_attack_blink >> 1;
+					}
+					
 					rect unit_area;
 					unit_area.from = area.from + (u->sprite->position - u->unit_type->placement_size / 2) / 32u;
 					unit_area.to = unit_area.from + xy(w, h);
@@ -2562,7 +2576,7 @@ namespace bwgame
 			if (draw_ui_elements)
 			{
 				draw_minimap(data, indexed_surface->pitch);
-				//draw_ui(data, indexed_surface->pitch);
+				draw_ui(data, indexed_surface->pitch);
 			}
 			indexed_surface->unlock();
 

@@ -1132,8 +1132,8 @@ int main()
 
 	log("v25\n");
 
-	size_t screen_width = 1280;
-	size_t screen_height = 800;
+	size_t screen_width = 260;
+	size_t screen_height = 260;
 	/*
 		260x416
 	*/
@@ -1179,7 +1179,7 @@ int main()
 	wnd.create("test", 0, 0, screen_width, screen_height);
 
 	ui.resize(screen_width, screen_height);
-	ui.resize(ui.game_st.map_tile_width + 2, ui.game_st.map_tile_width + 2);
+	ui.resize(ui.game_st.map_tile_width * 2, ui.game_st.map_tile_width * 2);
 
 	ui.screen_pos = {(int)ui.game_st.map_width / 2 - (int)screen_width / 2, (int)ui.game_st.map_height / 2 - (int)screen_height / 2};
 
