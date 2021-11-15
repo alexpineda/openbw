@@ -3,6 +3,10 @@
 #include <emscripten.h>
 #endif
 
+#ifdef TITAN_WRITEGIF
+#include "GifEncoder.h"
+#endif
+
 #include "ui.h"
 #include "common.h"
 #include "bwgame.h"
@@ -16,6 +20,10 @@ using namespace bwgame;
 using ui::log;
 
 FILE *log_file = nullptr;
+
+#ifdef TITAN_WRITEGIF
+GifEncoder gifEncoder;
+#endif
 
 namespace bwgame
 {
@@ -71,13 +79,14 @@ struct main_t
 
 	a_map<int, std::unique_ptr<saved_state>> saved_states;
 
+
 	void reset()
 	{
 		saved_states.clear();
 		ui.reset();
 	}
 
-	void update()
+	bool update()
 	{
 		auto now = clock.now();
 
@@ -185,6 +194,29 @@ struct main_t
 		}
 
 		ui.update();
+
+#ifdef TITAN_WRITEGIF
+		if (!ui.is_done()) {
+			int w;
+			int h;
+			uint32_t* px;
+			std::tie(w, h, px) = ui.get_rgba_buffer();
+			int delay = 20;
+			
+			gifEncoder.push(GifEncoder::PIXEL_FORMAT_RGBA, (uint8_t*)px, w, h, delay);
+
+			//screen_pos = xy(32 * x - view_width / 2, 32 * y - view_height / 2);
+		}
+		else {
+			log("saving gif");
+			if (!gifEncoder.close()) {
+				fprintf(stderr, "Error close gif file\n");
+			}
+			return false;
+		}
+#endif
+		return true;
+
 	}
 };
 
@@ -1132,8 +1164,8 @@ int main()
 
 	log("v25\n");
 
-	size_t screen_width = 260;
-	size_t screen_height = 260;
+	size_t screen_width = 1280;
+	size_t screen_height = 800;
 	/*
 		260x416
 	*/
@@ -1175,11 +1207,21 @@ int main()
 
 #endif
 
-	auto &wnd = ui.wnd;
-	wnd.create("test", 0, 0, screen_width, screen_height);
+#ifdef TITAN_WRITEGIF
+	screen_width = ui.game_st.map_tile_width+4;
+	screen_height = ui.game_st.map_tile_height+4;
+	ui.create_window = false;
+	ui.draw_ui_elements = false;
+	ui.game_speed = fp8::integer(8000);
+#endif
+
+
+	if (ui.create_window) {
+		auto& wnd = ui.wnd;
+		wnd.create("Titan Reactor / OpenBW", 0, 0, screen_width, screen_height);
+	}
 
 	ui.resize(screen_width, screen_height);
-	ui.resize(ui.game_st.map_tile_width * 2, ui.game_st.map_tile_width * 2);
 
 	ui.screen_pos = {(int)ui.game_st.map_width / 2 - (int)screen_width / 2, (int)ui.game_st.map_height / 2 - (int)screen_height / 2};
 
@@ -1188,6 +1230,16 @@ int main()
 	log("loaded in %dms\n", std::chrono::duration_cast<std::chrono::milliseconds>(clock.now() - start).count());
 
 	//set_malloc_fail_handler(malloc_fail_handler);
+#ifdef TITAN_WRITEGIF
+	int numFrames = ui.replay_st.end_frame / 4000;
+	int preAllocSize = screen_width * screen_height * 3 * numFrames;
+
+	if (!gifEncoder.open("test.gif", screen_width, screen_height, 30, true, 0, 0)) {
+		log("FAILED");
+		fprintf(stderr, "Error open gif file\n");
+		return 1;
+	}
+#endif // TITAN_WRITEGIF
 
 #ifdef EMSCRIPTEN
 	::m = &m;
@@ -1202,10 +1254,10 @@ int main()
 	},
 								 &m, 0, 1);
 #else
+
 	::g_m = &m;
-	while (true)
+	while (m.update())
 	{
-		m.update();
 		std::this_thread::sleep_for(std::chrono::milliseconds(20));
 	}
 #endif

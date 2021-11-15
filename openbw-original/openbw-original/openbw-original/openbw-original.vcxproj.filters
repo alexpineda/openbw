@@ -13,6 +13,15 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\egif">
+      <UniqueIdentifier>{4c5a25c7-e642-4385-bd70-8602a779814f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\egif\algorithm">
+      <UniqueIdentifier>{cc77c9d8-74d5-42fa-b9d0-f2a2b8567981}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\egif\giflib">
+      <UniqueIdentifier>{a9b4a26a-91a3-4004-b695-a91b1363ee90}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\ui\common.h">
@@ -93,6 +102,21 @@
     <ClInclude Include="..\..\..\bwgame.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\deps\egif\GifEncoder.h">
+      <Filter>Header Files\egif</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\deps\egif\algorithm\NeuQuant.h">
+      <Filter>Header Files\egif\algorithm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\deps\egif\giflib\gif_hash.h">
+      <Filter>Header Files\egif\giflib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\deps\egif\giflib\gif_lib.h">
+      <Filter>Header Files\egif\giflib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\deps\egif\giflib\gif_lib_private.h">
+      <Filter>Header Files\egif\giflib</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\ui\gfxtest.cpp">
@@ -100,6 +124,27 @@
     </ClCompile>
     <ClCompile Include="..\..\..\ui\sdl2.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\deps\egif\GifEncoder.cpp">
+      <Filter>Header Files\egif</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\deps\egif\algorithm\NeuQuant.cpp">
+      <Filter>Header Files\egif\algorithm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\deps\egif\giflib\egif_lib.cpp">
+      <Filter>Header Files\egif\giflib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\deps\egif\giflib\gif_err.cpp">
+      <Filter>Header Files\egif\giflib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\deps\egif\giflib\gif_hash.cpp">
+      <Filter>Header Files\egif\giflib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\deps\egif\giflib\gifalloc.cpp">
+      <Filter>Header Files\egif\giflib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\deps\egif\giflib\openbsd-reallocarray.cpp">
+      <Filter>Header Files\egif\giflib</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

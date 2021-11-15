@@ -26,6 +26,11 @@
     <ClInclude Include="..\..\..\containers.h" />
     <ClInclude Include="..\..\..\data_loading.h" />
     <ClInclude Include="..\..\..\data_types.h" />
+    <ClInclude Include="..\..\..\deps\egif\algorithm\NeuQuant.h" />
+    <ClInclude Include="..\..\..\deps\egif\GifEncoder.h" />
+    <ClInclude Include="..\..\..\deps\egif\giflib\gif_hash.h" />
+    <ClInclude Include="..\..\..\deps\egif\giflib\gif_lib.h" />
+    <ClInclude Include="..\..\..\deps\egif\giflib\gif_lib_private.h" />
     <ClInclude Include="..\..\..\game_types.h" />
     <ClInclude Include="..\..\..\intrusive_list.h" />
     <ClInclude Include="..\..\..\korean.h" />
@@ -47,6 +52,13 @@
     <ClInclude Include="..\..\..\util.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\deps\egif\algorithm\NeuQuant.cpp" />
+    <ClCompile Include="..\..\..\deps\egif\GifEncoder.cpp" />
+    <ClCompile Include="..\..\..\deps\egif\giflib\egif_lib.cpp" />
+    <ClCompile Include="..\..\..\deps\egif\giflib\gifalloc.cpp" />
+    <ClCompile Include="..\..\..\deps\egif\giflib\gif_err.cpp" />
+    <ClCompile Include="..\..\..\deps\egif\giflib\gif_hash.cpp" />
+    <ClCompile Include="..\..\..\deps\egif\giflib\openbsd-reallocarray.cpp" />
     <ClCompile Include="..\..\..\ui\gfxtest.cpp" />
     <ClCompile Include="..\..\..\ui\sdl2.cpp" />
   </ItemGroup>
@@ -120,8 +132,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>D:\dev\openbw\deps\SDL2-2.0.14\include;D:\dev\openbw\ui;D:\dev\openbw;D:\dev\openbw\deps\asio;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalOptions>/D NOMINMAX /D _CRT_SECURE_NO_WARNINGS /D OPENBW_NO_SDL_IMAGE /D OPENBW_NO_SDL_MIXER %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>D:\dev\openbw - ems\deps\egif;D:\dev\openbw\deps\SDL2-2.0.14\include;D:\dev\openbw\ui;D:\dev\openbw;D:\dev\openbw\deps\asio;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/D NOMINMAX /D _CRT_SECURE_NO_WARNINGS /D OPENBW_NO_SDL_IMAGE  /D OPENBW_NO_SDL_MIXER /D TITAN_WRITEGIF %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp14</LanguageStandard>
     </ClCompile>
     <Link>

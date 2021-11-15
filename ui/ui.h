@@ -2573,9 +2573,10 @@ namespace bwgame
 
 			draw_callback(data, indexed_surface->pitch);
 
+			draw_minimap(data, indexed_surface->pitch);
+
 			if (draw_ui_elements)
 			{
-				draw_minimap(data, indexed_surface->pitch);
 				draw_ui(data, indexed_surface->pitch);
 			}
 			indexed_surface->unlock();
@@ -2607,6 +2608,8 @@ namespace bwgame
 				rgba_surface->blit(&*window_surface, 0, 0);
 				wnd.update_surface();
 			}
+
+			
 		}
 
 		std::tuple<int, int, uint32_t *> get_rgba_buffer()
