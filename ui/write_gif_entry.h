@@ -1,9 +1,4 @@
 #pragma once
-
-#ifdef EMSCRIPTEN
-#include <emscripten.h>
-#endif
-
 #include "ui.h"
 #include "common.h"
 #include "bwgame.h"

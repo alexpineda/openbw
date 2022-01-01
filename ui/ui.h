@@ -731,7 +731,7 @@ namespace bwgame
 		image_data img;
 		tileset_image_data tileset_img;
 		native_window::window wnd;
-		bool create_window = true;
+		bool create_window = false;
 		bool draw_ui_elements = true;
 		bool draw_ui_minimap = true;
 
@@ -1003,15 +1003,15 @@ namespace bwgame
 			return {{from_tile_x, from_tile_y}, {to_tile_x, to_tile_y}};
 		}
 
-		void draw_fow(uint8_t* data, size_t data_pitch)
+		void draw_fow(uint8_t *data, size_t data_pitch)
 		{
 			auto screen_tile = screen_tile_bounds();
 
 			size_t tile_index = screen_tile.from.y * game_st.map_tile_width + screen_tile.from.x;
-			auto* megatile_index = &st.tiles_mega_tile_index[tile_index];
-			auto* tile = &st.tiles[tile_index];
+			auto *megatile_index = &st.tiles_mega_tile_index[tile_index];
+			auto *tile = &st.tiles[tile_index];
 			size_t width = screen_tile.to.x - screen_tile.from.x;
-			uint8_t* dark = &tileset_img.dark_pcx.data[256 * 18];
+			uint8_t *dark = &tileset_img.dark_pcx.data[256 * 18];
 
 			for (size_t tile_y = screen_tile.from.y; tile_y != screen_tile.to.y; ++tile_y)
 			{
@@ -1033,7 +1033,7 @@ namespace bwgame
 							offset_y = -screen_y;
 						}
 
-						uint8_t* dst = data + (screen_y + offset_y) * data_pitch + screen_x;
+						uint8_t *dst = data + (screen_y + offset_y) * data_pitch + screen_x;
 
 						size_t width = 32;
 						size_t height = 32;
@@ -1090,7 +1090,7 @@ namespace bwgame
 						offset_y = -screen_y;
 					}
 
-					uint8_t* dst = data + screen_y * data_pitch + screen_x;
+					uint8_t *dst = data + screen_y * data_pitch + screen_x;
 
 					size_t width = 32;
 					size_t height = 32;
@@ -1778,28 +1778,34 @@ namespace bwgame
 			return area;
 		}
 
-		void draw_minimap(uint8_t* data, size_t data_pitch) {
+		void draw_minimap(uint8_t *data, size_t data_pitch)
+		{
 			auto area = get_minimap_area();
 			size_t minimap_width = area.to.x - area.from.x;
 			size_t minimap_height = area.to.y - area.from.y;
-			if (minimap_width != game_st.map_tile_width) return;
-			if (minimap_height != game_st.map_tile_height) return;
+			if (minimap_width != game_st.map_tile_width)
+				return;
+			if (minimap_height != game_st.map_tile_height)
+				return;
 			fill_rectangle(data, data_pitch, area, 0);
-			line_rectangle(data, data_pitch, { area.from - xy(1, 1), area.to + xy(1, 1) }, 0);
+			line_rectangle(data, data_pitch, {area.from - xy(1, 1), area.to + xy(1, 1)}, 0);
 
-			uint8_t* p = data + data_pitch * (size_t)area.from.y + (size_t)area.from.x;
-			uint8_t* dark = &tileset_img.dark_pcx.data[256 * 18];
+			uint8_t *p = data + data_pitch * (size_t)area.from.y + (size_t)area.from.x;
+			uint8_t *dark = &tileset_img.dark_pcx.data[256 * 18];
 
 			size_t pitch = data_pitch - game_st.map_tile_width;
-			for (size_t y = 0; y != game_st.map_tile_height; ++y) {
-				for (size_t x = 0; x != game_st.map_tile_width; ++x) {
+			for (size_t y = 0; y != game_st.map_tile_height; ++y)
+			{
+				for (size_t x = 0; x != game_st.map_tile_width; ++x)
+				{
 					size_t index;
-					tile_t& tile = st.tiles[y * game_st.map_tile_width + x];
+					tile_t &tile = st.tiles[y * game_st.map_tile_width + x];
 					if (~tile.flags & tile_t::flag_has_creep)
 						index = st.tiles_mega_tile_index[y * game_st.map_tile_width + x];
-					else index = game_st.cv5.at(1).mega_tile_index[creep_random_tile_indices[y * game_st.map_tile_width + x]];
-					auto* images = &tileset_img.vx4.at(index).images[0];
-					auto* bitmap = &tileset_img.vr4.at(*images / 2).bitmap[0];
+					else
+						index = game_st.cv5.at(1).mega_tile_index[creep_random_tile_indices[y * game_st.map_tile_width + x]];
+					auto *images = &tileset_img.vx4.at(index).images[0];
+					auto *bitmap = &tileset_img.vr4.at(*images / 2).bitmap[0];
 					auto val = bitmap[55 / sizeof(vr4_entry::bitmap_t)];
 					size_t shift = 8 * (55 % sizeof(vr4_entry::bitmap_t));
 					val >>= shift;
@@ -1808,34 +1814,45 @@ namespace bwgame
 				p += pitch;
 			}
 
-			for (size_t i = 12; i != 0;) {
+			for (size_t i = 12; i != 0;)
+			{
 				--i;
-				for (unit_t* u : ptr(st.player_units[i])) {
-					if (!unit_visble_on_minimap(u)) continue;
+				for (unit_t *u : ptr(st.player_units[i]))
+				{
+					if (!unit_visble_on_minimap(u))
+						continue;
 					int color = img.player_minimap_colors.at(st.players[u->owner].color);
 					size_t w = u->unit_type->placement_size.x / 32u;
 					size_t h = u->unit_type->placement_size.y / 32u;
-					if (unit_is_mineral_field(u) || unit_is(u, UnitTypes::Resource_Vespene_Geyser)) {
+					if (unit_is_mineral_field(u) || unit_is(u, UnitTypes::Resource_Vespene_Geyser))
+					{
 						color = tileset_img.resource_minimap_color;
 					}
-					if (ut_building(u)) {
-						if (w > 4) w = 4;
-						if (h > 4) h = 4;
+					if (ut_building(u))
+					{
+						if (w > 4)
+							w = 4;
+						if (h > 4)
+							h = 4;
 					}
-					if (w < 2) w = 2;
-					if (h < 2) h = 2;
-					
-					if (u->tr_minimap_attack_blink == 0 && (u->air_weapon_cooldown || u->ground_weapon_cooldown)) {
-						u->tr_minimap_attack_blink = 0b111000111000111000111;
+					if (w < 2)
+						w = 2;
+					if (h < 2)
+						h = 2;
 
+					if (u->tr_minimap_attack_blink == 0 && (u->air_weapon_cooldown || u->ground_weapon_cooldown))
+					{
+						u->tr_minimap_attack_blink = 0b111000111000111000111;
 					}
-					if (u->tr_minimap_attack_blink & 1) {
+					if (u->tr_minimap_attack_blink & 1)
+					{
 						color = tileset_img.minimap_blink_color;
 					}
-					if (u->tr_minimap_attack_blink) {
+					if (u->tr_minimap_attack_blink)
+					{
 						u->tr_minimap_attack_blink = u->tr_minimap_attack_blink >> 1;
 					}
-					
+
 					rect unit_area;
 					unit_area.from = area.from + (u->sprite->position - u->unit_type->placement_size / 2) / 32u;
 					unit_area.to = unit_area.from + xy(w, h);
@@ -1847,7 +1864,6 @@ namespace bwgame
 			view_rect.from = area.from + xy(screen_pos.x / 32u, screen_pos.y / 32u);
 			view_rect.to = view_rect.from + xy((view_width + 31) / 32u, (view_height + 31) / 32u);
 			line_rectangle(data, data_pitch, view_rect, 255);
-
 		}
 
 		int replay_frame = 0;
@@ -2587,7 +2603,6 @@ namespace bwgame
 
 			rgba_surface->fill(0, 0, 0, 255);
 			indexed_surface->blit(&*rgba_surface, 0, 0);
-			
 
 			draw_image_queue();
 
@@ -2612,8 +2627,6 @@ namespace bwgame
 				rgba_surface->blit(&*window_surface, 0, 0);
 				wnd.update_surface();
 			}
-
-			
 		}
 
 		std::tuple<int, int, uint32_t *> get_rgba_buffer()

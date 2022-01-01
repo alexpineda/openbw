@@ -622,8 +622,10 @@ function set_nick(player, nick) {
   document.getElementById("nick" + player).innerHTML = nick;
 }
 
-function set_supply(player, supply) {
-  document.getElementById("supply" + player).innerHTML = supply;
+function set_supply(player, supply, red) {
+  const el = document.getElementById("supply" + player);
+  el.innerHTML = supply;
+  el.style.color = red ? "red" : "";
 }
 
 function set_minerals(player, minerals) {
@@ -642,6 +644,11 @@ function set_army(player, army) {
   document.getElementById("army" + player).innerHTML = army;
 }
 
+const race_img_urls = {
+  protoss: "https://cdn.glitch.me/550ab268-82e8-4885-95b7-a77978223bf2%2Fprotoss_emblem2.png?v=1636778571156",
+  zerg: "https://cdn.glitch.me/550ab268-82e8-4885-95b7-a77978223bf2%2Fzerg_emblem2.png?v=1636778571343",
+  terran: "https://cdn.glitch.me/550ab268-82e8-4885-95b7-a77978223bf2%2Fterran_emblem2.png?v=1636778571331"
+}
 var player_race_cache = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
 function set_race(player, race) {
   if (player_race_cache[player] != race) {
@@ -657,9 +664,7 @@ function set_race(player, race) {
     console.log("setting race emblem for player " + player);
     $("#race" + player).css(
       "background-image",
-      "url('http://www.openbw.com/wp-content/uploads/2017/01/" +
-        race_name +
-        "_emblem2.png')"
+      `url('${race_img_urls[race_name]}')`
     );
   }
 }
