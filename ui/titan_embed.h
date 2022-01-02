@@ -4,7 +4,7 @@
 #include <emscripten.h>
 #endif
 
-#include "ui.h"
+#include "titan_game.h"
 #include "common.h"
 #include "bwgame.h"
 #include "replay.h"
@@ -21,7 +21,7 @@ struct saved_state
 
 struct main_t
 {
-	bwgame::ui_functions ui;
+	bwgame::titan_replay_functions ui;
 
 	main_t(bwgame::game_player player) : ui(std::move(player)) {}
 
