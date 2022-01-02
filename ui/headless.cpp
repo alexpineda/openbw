@@ -38,7 +38,11 @@ namespace bwgame
 		void fatal_error_str(a_string str)
 		{
 			const char *p = str.c_str();
-			EM_ASM_({ js_fatal_error($0); }, p);
+			#ifdef __EMSCRIPTEN_PTHREADS__
+				MAIN_THREAD_EM_ASM({ js_fatal_error($0); }, p);
+			#else
+				EM_ASM({ js_fatal_error($0); }, p);
+			#endif
 			log("fatal error: %s\n", str);
 			std::terminate();
 		}
@@ -202,7 +206,11 @@ void out_of_memory()
 {
 	printf("out of memory :(\n");
 	const char *p = "out of memory :(";
-	EM_ASM_({ js_fatal_error($0); }, p);
+	#ifdef __EMSCRIPTEN_PTHREADS__
+		MAIN_THREAD_EM_ASM({ js_fatal_error($0); }, p);
+	#else
+		EM_ASM({ js_fatal_error($0); }, p);
+	#endif
 	throw std::bad_alloc();
 }
 
@@ -298,7 +306,12 @@ namespace bwgame
 
 			void get_bytes(uint8_t *dst, size_t n)
 			{
-				EM_ASM_({ js_read_data($0, $1, $2, $3); }, index, dst, file_pointer, n);
+				
+				#ifdef __EMSCRIPTEN_PTHREADS__
+					MAIN_THREAD_EM_ASM({ js_read_data($0, $1, $2, $3); }, index, dst, file_pointer, n);
+				#else
+					EM_ASM({ js_read_data($0, $1, $2, $3); }, index, dst, file_pointer, n);
+				#endif
 				file_pointer += n;
 			}
 
@@ -313,7 +326,11 @@ namespace bwgame
 
 			size_t size()
 			{
-				return EM_ASM_INT({ return js_file_size($0); }, index);
+				#ifdef __EMSCRIPTEN_PTHREADS__
+					return MAIN_THREAD_EM_ASM_INT({ return js_file_size($0); }, index);
+				#else
+					return EM_ASM_INT({ return js_file_size($0); }, index);
+				#endif
 			}
 		};
 
@@ -1026,6 +1043,12 @@ bool any_replay_loaded = false;
 extern "C" void next_frame()
 {
 	m->update();
+
+	#ifdef __EMSCRIPTEN_PTHREADS__
+		MAIN_THREAD_ASYNC_EM_ASM({ js_post_main_loop(); });
+	#else
+		EM_ASM({ js_post_main_loop(); });
+	#endif
 }
 
 extern "C" void load_replay(const uint8_t *data, size_t len)
@@ -1055,14 +1078,31 @@ int main()
 
 	::m = &m;
 	::g_m = &m;
-	EM_ASM({js_load_done();});
+
+	#ifdef __EMSCRIPTEN_PTHREADS__
+		MAIN_THREAD_EM_ASM({js_load_done();});
+	#else
+		EM_ASM({js_load_done();});
+	#endif
+
 	emscripten_set_main_loop_arg([](void *ptr)
 								 {
 									 if (!any_replay_loaded)
 										 return;
-									 EM_ASM({ js_pre_main_loop(); });
+										 
+									 #ifdef __EMSCRIPTEN_PTHREADS__
+									 	MAIN_THREAD_ASYNC_EM_ASM({ js_pre_main_loop(); });
+									#else
+									 	EM_ASM({ js_pre_main_loop(); });
+									#endif
+
 									 ((main_t *)ptr)->update();
-									 EM_ASM({ js_post_main_loop(); });
+
+									 #ifdef __EMSCRIPTEN_PTHREADS__
+									 	MAIN_THREAD_ASYNC_EM_ASM({ js_post_main_loop(); });
+									#else
+									 	EM_ASM({ js_post_main_loop(); });
+									#endif
 								 },
 								 &m, 0, 1);
 

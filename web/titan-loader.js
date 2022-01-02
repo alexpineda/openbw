@@ -1,6 +1,5 @@
 import createOpenBw from "./titan.js";
-import * as downgrade from "./downgrade.js";
-console.log("downgrade", downgrade)
+import "./downgrade.js";
 let openBw;
 
 createOpenBw().then(function (_openBw) {
@@ -31,20 +30,9 @@ createOpenBw().then(function (_openBw) {
  * Constants
  *****************************/
 var C_PLAYER_ACTIVE = 0;
-var C_COLOR = 1;
-var C_NICK = 2;
 var C_USED_ZERG_SUPPLY = 3;
-var C_USED_TERRAN_SUPPLY = 4;
-var C_USED_PROTOSS_SUPPLY = 5;
 var C_AVAILABLE_ZERG_SUPPLY = 6;
-var C_AVAILABLE_TERRAN_SUPPLY = 7;
-var C_AVAILABLE_PROTOSS_SUPPLY = 8;
-var C_CURRENT_MINERALS = 9;
-var C_CURRENT_GAS = 10;
-var C_CURRENT_WORKERS = 11;
-var C_CURRENT_ARMY_SIZE = 12;
 var C_RACE = 13;
-var C_APM = 14;
 
 var C_MPQ_FILENAMES = ["StarDat.mpq", "BrooDat.mpq", "Patch_rt.mpq"];
 var C_SPECIFY_MPQS_MESSAGE =
@@ -292,7 +280,7 @@ function setupCallbacks() {
 const js_pre_main_loop = () => {}
 
 const js_post_main_loop = () => {
-
+  console.log(`frame: ${openBw._replay_get_value(2)}`);
 }
 
 const js_read_data =  (index, dst, offset, size) => {
@@ -431,10 +419,7 @@ function load_replay_url(url) {
 }
 
 function start_replay(buffer, length) {
-  $("#top").css("display", "none");
   close_modal();
-
-  console.log(openBw.canvas);
 
   if (!main_has_been_called) {
     try {
@@ -462,6 +447,7 @@ function start_replay(buffer, length) {
       }
     }
   }
+
 }
 
 function on_read_all_done() {

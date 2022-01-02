@@ -2650,7 +2650,7 @@ namespace bwgame
 			auto *a = filename.c_str();
 			auto *b = (void (*)(void *, uint8_t *, size_t))f;
 			auto *c = uptr.release();
-			EM_ASM_({ js_download_file($0, $1, $2); }, a, b, c);
+			MAIN_THREAD_EM_ASM({ js_download_file($0, $1, $2); }, a, b, c);
 #else
 			filename = "data/" + filename;
 			FILE *f = fopen(filename.c_str(), "rb");

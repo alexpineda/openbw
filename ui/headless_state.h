@@ -111,7 +111,12 @@ namespace bwgame
 			auto *a = filename.c_str();
 			auto *b = (void (*)(void *, uint8_t *, size_t))f;
 			auto *c = uptr.release();
-			EM_ASM_({ js_download_file($0, $1, $2); }, a, b, c);
+			
+			#ifdef __EMSCRIPTEN_PTHREADS__
+				MAIN_THREAD_EM_ASM({ js_download_file($0, $1, $2); }, a, b, c);
+			#else
+				EM_ASM({ js_download_file($0, $1, $2); }, a, b, c);
+			#endif
 		}
 
 		void reset()
