@@ -2,7 +2,7 @@
 // based on openbw/gfxtest.cpp
 
 #include <emscripten.h>
-#include "titan_game.h"
+#include "headless_state.h"
 #include "common.h"
 #include "bwgame.h"
 #include "replay.h"
@@ -77,6 +77,8 @@ struct main_t
 
 	bool update()
 	{
+		ui.played_sounds.clear();
+
 		auto now = clock.now();
 
 		auto tick_speed = std::chrono::milliseconds((fp8::integer(42) / ui.game_speed).integer_part());
@@ -809,36 +811,6 @@ val lookup_unit_extended(int32_t index)
 	return Dump::dump_unit(u);
 }
 
-// void next_frame()
-// {
-// 	int save_interval = 10 * 1000 / 42;
-// 	if (ui.st.current_frame == 0 || ui.st.current_frame % save_interval == 0)
-// 	{
-// 		auto i = saved_states.find(ui.st.current_frame);
-// 		if (i == saved_states.end())
-// 		{
-// 			auto v = std::make_unique<saved_state>();
-// 			v->st = copy_state(ui.st);
-// 			v->action_st = copy_state(ui.action_st, ui.st, v->st);
-// 			v->apm = ui.apm;
-
-// 			a_map<int, std::unique_ptr<saved_state>> new_saved_states;
-// 			new_saved_states[ui.st.current_frame] = std::move(v);
-// 			while (!saved_states.empty())
-// 			{
-// 				auto i = saved_states.begin();
-// 				auto v = std::move(*i);
-// 				saved_states.erase(i);
-// 				new_saved_states[v.first] = std::move(v.second);
-// 			}
-// 			std::swap(saved_states, new_saved_states);
-// 		}
-// 	}
-// 	ui.replay_functions::next_frame();
-// 	for (auto &v : ui.apm)
-// 		v.update(ui.st.current_frame);
-// }
-
 util_functions &get_util_funcs()
 {
 	m_util_funcs.emplace(m->ui.st);
@@ -1050,6 +1022,11 @@ extern "C" double player_get_value(int player, int index)
 }
 
 bool any_replay_loaded = false;
+
+extern "C" void next_frame()
+{
+	m->update();
+}
 
 extern "C" void load_replay(const uint8_t *data, size_t len)
 {

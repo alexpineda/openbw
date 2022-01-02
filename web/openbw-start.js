@@ -36,7 +36,6 @@
  /*****************************
   * Globals
   *****************************/
- var is_openbw_module_ready = false;
  var is_runtime_initialized = false;
  
  var Module = {
@@ -139,115 +138,25 @@
    [],
  ];
  
- function update_graphs(frame) {
-   if ($("#graphs_tab").is(":visible")) {
-     if ($("#graphs_tab_panel1").hasClass("is-active")) {
-       var arrayIndex = Math.round(frame / 16);
+    //  var funcs = Module.get_util_funcs();
+    //    update_production_tab(funcs.get_all_incomplete_units());
+    //    update_army_tab(funcs.get_all_completed_units());
+    //        funcs.get_completed_upgrades(players[i]),
+    //        funcs.get_incomplete_upgrades(players[i]),
  
-       infoChart.data.labels = resource_count[0].slice(0, arrayIndex);
-       infoChart.data.datasets[0].data = resource_count[1].slice(0, arrayIndex);
-       infoChart.data.datasets[1].data = resource_count[2].slice(0, arrayIndex);
-       infoChart.data.datasets[2].data = resource_count[3].slice(0, arrayIndex);
-       infoChart.data.datasets[3].data = resource_count[4].slice(0, arrayIndex);
-       infoChart.data.datasets[4].data = resource_count[5].slice(0, arrayIndex);
-       infoChart.data.datasets[5].data = resource_count[6].slice(0, arrayIndex);
-       infoChart.data.datasets[6].data = resource_count[7].slice(0, arrayIndex);
-       infoChart.data.datasets[7].data = resource_count[8].slice(0, arrayIndex);
-       infoChart.update();
-     }
-   }
- }
+  //  update_handle_position(_replay_get_value(6) * 200);
+  //  update_timer(_replay_get_value(2));
+  //  update_speed(_replay_get_value(0));
  
- /**
-  * updates values for the replay viewer info tab (production, army, killed units, etc.).
-  */
- function update_info_tab() {
-   if ($("#info_tab").is(":visible")) {
-     var funcs = Module.get_util_funcs();
+  //  var array_index = Math.round(frame / 16);
+  //  if (array_index >= resource_count[0].length) {
+  //    resource_count[0].length = array_index + 1;
+  //  }
+  //  resource_count[0][array_index] = _replay_get_value(2);
  
-     if ($("#info_tab_panel1").hasClass("is-active")) {
-       update_production_tab(funcs.get_all_incomplete_units());
-     } else if ($("#info_tab_panel2").hasClass("is-active")) {
-       update_army_tab(funcs.get_all_completed_units());
-     } else if ($("#info_tab_panel3").hasClass("is-active")) {
-       var upgrades = [];
-       for (var i = 0; i < players.length; i++) {
-         upgrades.push([
-           players[i],
-           funcs.get_completed_upgrades(players[i]),
-           funcs.get_incomplete_upgrades(players[i]),
-         ]);
-       }
-       update_upgrades_tab(upgrades);
-     } else if ($("#info_tab_panel4").hasClass("is-active")) {
-       var researches = [];
-       for (var i = 0; i < players.length; i++) {
-         researches.push([
-           players[i],
-           funcs.get_completed_research(players[i]),
-           funcs.get_incomplete_research(players[i]),
-         ]);
-       }
-       update_research_tab(researches);
-     }
-   }
- }
- 
- /**
-  * updates values for the replay viewer info bar
-  */
- function update_info_bar(frame) {
-   update_handle_position(_replay_get_value(6) * 200);
-   update_timer(_replay_get_value(2));
-   update_speed(_replay_get_value(0));
- 
-   var array_index = Math.round(frame / 16);
-   if (array_index >= resource_count[0].length) {
-     resource_count[0].length = array_index + 1;
-   }
-   resource_count[0][array_index] = _replay_get_value(2);
- 
-   for (var i = 0; i < players.length; ++i) {
-     var race = _player_get_value(players[i], C_RACE);
-     var used_supply = _player_get_value(players[i], C_USED_ZERG_SUPPLY + race);
-     var available_supply = _player_get_value(
-       players[i],
-       C_AVAILABLE_ZERG_SUPPLY + race
-     );
- 
-     var minerals = _player_get_value(players[i], C_CURRENT_MINERALS);
-     var gas = _player_get_value(players[i], C_CURRENT_GAS);
-     var workers = _player_get_value(players[i], C_CURRENT_WORKERS);
-     var army_size = _player_get_value(players[i], C_CURRENT_ARMY_SIZE);
- 
-     if (array_index >= resource_count[0].length) {
-       resource_count[i * 4 + 1].length = array_index + 1;
-       resource_count[i * 4 + 2].length = array_index + 1;
-       resource_count[i * 4 + 3].length = array_index + 1;
-       resource_count[i * 4 + 4].length = array_index + 1;
-     }
-     resource_count[i * 4 + 1][array_index] = minerals;
-     resource_count[i * 4 + 2][array_index] = gas;
-     resource_count[i * 4 + 3][array_index] = workers;
-     resource_count[i * 4 + 4][array_index] = army_size;
- 
-     if (!first_frame_played) {
-       set_map_name(UTF8ToString(_replay_get_value(5)));
-       set_nick(i + 1, UTF8ToString(_player_get_value(players[i], C_NICK)));
-       set_color(i + 1, _player_get_value(players[i], C_COLOR));
-       set_race(i + 1, race);
-     }
- 
-     set_supply(i + 1, used_supply + " / " + available_supply, used_supply > available_supply);
-     set_minerals(i + 1, minerals);
-     set_gas(i + 1, gas);
-     set_workers(i + 1, workers);
-     set_army(i + 1, army_size);
-     set_apm(i + 1, _player_get_value(players[i], C_APM));
-   }
- 
-   first_frame_played = true;
- }
+      //  set_map_name(UTF8ToString(_replay_get_value(5)));
+      //  set_nick(i + 1, UTF8ToString(_player_get_value(players[i], C_NICK)));
+    //  set_apm(i + 1, _player_get_value(players[i], C_APM));
  
  /*****************************
   * Listener functions
@@ -302,28 +211,6 @@
    }
  }
  
- function add_drag_and_drop_listeners(element) {
-   element.addEventListener(
-     "dragover",
-     function (e) {
-       e.stopPropagation();
-       e.preventDefault();
-       e.dataTransfer.dropEffect = "move";
-     },
-     false
-   );
- 
-   element.addEventListener(
-     "drop",
-     function (e) {
-       e.stopPropagation();
-       e.preventDefault();
-       var files = e.dataTransfer.files;
-       load_replay_file(files, element);
-     },
-     false
-   );
- }
  
  /*****************************
   * Helper functions
@@ -436,13 +323,7 @@
  
  var loop_counter = 0;
  function js_post_main_loop() {
-   var frame = _replay_get_value(2);
-   if (Math.abs(frame - loop_counter) >= 8) {
-     update_info_bar(frame);
-     update_info_tab();
-     update_graphs(frame);
-     loop_counter = frame;
-   }
+  //  var frame = _replay_get_value(2);
  }
  
  function js_read_data(index, dst, offset, size) {
@@ -580,8 +461,6 @@
    req.send();
  }
  
- var first_frame_played = false;
- 
  function start_replay(buffer, length) {
    $("#top").css("display", "none");
    close_modal();
@@ -598,8 +477,6 @@
    }
  
    _load_replay(buffer, length);
- 
-   first_frame_played = false;
  
    players = [];
    for (var i = 0; i != 12; ++i) {

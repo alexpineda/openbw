@@ -4,7 +4,7 @@
 #include <emscripten.h>
 #endif
 
-#include "titan_game.h"
+#include "headless.h"
 #include "common.h"
 #include "bwgame.h"
 #include "replay.h"
