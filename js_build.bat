@@ -16,7 +16,7 @@ set BUILD_ARGS=%BUILD_ARGS% %OPENBW_DIR%/ui/titan_embed.cpp
 set BUILD_ARGS=%BUILD_ARGS% -ferror-limit=4  -s ASM_JS=1 -s TOTAL_MEMORY=201326592
 set BUILD_ARGS=%BUILD_ARGS% -s INVOKE_RUN=0 --bind -D USE_DL_PREFIX -s ABORTING_MALLOC=0 -DMSPACES -DFOOTERS
 set BUILD_ARGS=%BUILD_ARGS% 
-set BUILD_ARGS=%BUILD_ARGS% %OPTIMIZATION% %GRAPHICS% %DEBUG% -s ENVIRONMENT='web' -o titan.js
+set BUILD_ARGS=%BUILD_ARGS% %OPTIMIZATION% %GRAPHICS% %DEBUG% -s ENVIRONMENT=web -o web/titan.js
 set BUILD_ARGS=%BUILD_ARGS%  
 em++ %BUILD_ARGS% -s EXPORTED_FUNCTIONS="['_main','_replay_get_value','_replay_set_value','_player_get_value','_load_replay']" -s EXTRA_EXPORTED_RUNTIME_METHODS="['callMain']"
 

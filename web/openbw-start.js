@@ -87,9 +87,6 @@
      load_mpq_from_db();
    });
  
-   initialize_canvas(canvas);
- 
-   add_drag_and_drop_listeners(canvas);
    document
      .getElementById("mpq_files")
      .addEventListener("change", on_mpq_specify_select, false);
@@ -100,36 +97,11 @@
      .getElementById("download_rep_file")
      .addEventListener("change", e => on_rep_file_select(e, true), false);
  
-   $("#play_demo_button").on("click", function (e) {
-     if (has_all_files()) {
-       load_replay_url("/bw/flash_vs_jaedong.rep");
-     }
-   });
  
    $("#specify_mpqs_button").on("click", function (e) {
      print_to_modal("Specify MPQ files", C_SPECIFY_MPQS_MESSAGE, true);
    });
  });
- 
- /**
-  * Sets up the initial canvas look.
-  */
- function initialize_canvas(canvas) {
-   canvas.height = "300";
-   canvas.style.height = "300px";
-   canvas.width = "400";
-   canvas.style.width = "400px";
- 
-   if (ajax_object.replay_file == null) {
-     var context = canvas.getContext("2d");
-     context.fillStyle = "black";
-     context.font = "24px Arial";
-     context.fillText("Drop your replay file here", 70, 140);
-   } else {
-     resize_canvas(canvas);
-     print_to_modal("Loading...", ajax_object.replay_file.substring(27));
-   }
- }
  
  var resource_count = [
    [],
@@ -408,22 +380,6 @@
    reader.readAsArrayBuffer(files[0]);
  }
  
- function resize_canvas(canvas) {
-   canvas.style.border = 0;
-   canvas.parentElement.style.position = "relative";
-   canvas.style.position = "absolute";
-   canvas.style.width = "100%";
-   canvas.style.height = "100%";
-   _ui_resize(
-     canvas.parentElement.clientWidth,
-     canvas.parentElement.clientHeight
-   );
- 
-   var ctx = document.getElementById("graphs_tab");
-   ctx.style.width = "70%";
-   ctx.style.height = "70%";
- }
- 
  function js_fatal_error(ptr) {
    var str = UTF8ToString(ptr);
  
@@ -436,11 +392,7 @@
    );
  }
  
- function print_to_canvas(text, posx, posy, canvas) {
-   var context = canvas.getContext("2d");
-   context.clearRect(0, 0, canvas.width, canvas.height);
-   context.fillText(text, posx, posy);
- }
+ const print_to_canvas = (...args) => console.log(...args);
  
  function print_to_modal(title, text, mpqspecify) {
    $("#rv_modal h3").html(title);
@@ -451,11 +403,11 @@
      $("#mpq_specify").css("display", "none");
    }
  
-   $("#rv_modal").foundation("open");
+   //@todo open modal
  }
  
  function close_modal() {
-   $("#rv_modal").foundation("close");
+   //@todo close modal
  }
  
  function index_by_name(name) {
@@ -479,7 +431,7 @@
   *****************************/
  
  function js_pre_main_loop() {
-   resize_canvas(Module.canvas);
+
  }
  
  var loop_counter = 0;
@@ -634,7 +586,7 @@
    $("#top").css("display", "none");
    close_modal();
  
-   resize_canvas(Module.canvas);
+   console.log(Module.canvas);
  
    if (!main_has_been_called) {
      try {
