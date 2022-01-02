@@ -1055,7 +1055,7 @@ int main()
 
 	::m = &m;
 	::g_m = &m;
-	//EM_ASM({js_load_done();});
+	EM_ASM({js_load_done();});
 	emscripten_set_main_loop_arg([](void *ptr)
 								 {
 									 if (!any_replay_loaded)
