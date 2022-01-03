@@ -1040,6 +1040,8 @@ extern "C" double player_get_value(int player, int index)
 
 bool any_replay_loaded = false;
 
+
+// @todo add next_frame_exact
 extern "C" void next_frame()
 {
 	m->update();
@@ -1085,26 +1087,27 @@ int main()
 		EM_ASM({js_load_done();});
 	#endif
 
-	emscripten_set_main_loop_arg([](void *ptr)
-								 {
-									 if (!any_replay_loaded)
-										 return;
+	emscripten_exit_with_live_runtime();
+	// emscripten_set_main_loop_arg([](void *ptr)
+	// 							 {
+	// 								 if (!any_replay_loaded)
+	// 									 return;
 										 
-									 #ifdef __EMSCRIPTEN_PTHREADS__
-									 	MAIN_THREAD_ASYNC_EM_ASM({ js_pre_main_loop(); });
-									#else
-									 	EM_ASM({ js_pre_main_loop(); });
-									#endif
+	// 								 #ifdef __EMSCRIPTEN_PTHREADS__
+	// 								 	MAIN_THREAD_ASYNC_EM_ASM({ js_pre_main_loop(); });
+	// 								#else
+	// 								 	EM_ASM({ js_pre_main_loop(); });
+	// 								#endif
 
-									 ((main_t *)ptr)->update();
+	// 								 ((main_t *)ptr)->update();
 
-									 #ifdef __EMSCRIPTEN_PTHREADS__
-									 	MAIN_THREAD_ASYNC_EM_ASM({ js_post_main_loop(); });
-									#else
-									 	EM_ASM({ js_post_main_loop(); });
-									#endif
-								 },
-								 &m, 0, 1);
+	// 								 #ifdef __EMSCRIPTEN_PTHREADS__
+	// 								 	MAIN_THREAD_ASYNC_EM_ASM({ js_post_main_loop(); });
+	// 								#else
+	// 								 	EM_ASM({ js_post_main_loop(); });
+	// 								#endif
+	// 							 },
+	// 							 &m, 0, 1);
 
 	::g_m = nullptr;
 
