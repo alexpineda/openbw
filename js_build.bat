@@ -4,7 +4,7 @@ set BWAPI_DIR=../bwapi
 
 set OPTIMIZATION=-O0 
 set PTHREAD=-pthread -s PROXY_TO_PTHREAD
-set DEBUG=-g3 -s ASSERTIONS=2 -s VERBOSE -s EXCEPTION_DEBUG
+set DEBUG=-g3 -s ASSERTIONS=2 -s VERBOSE -s EXCEPTION_DEBUG -s DISABLE_EXCEPTION_CATCHING=2
 set DEBUG=%DEBUG% -s GL_DEBUG -s DEMANGLE_SUPPORT -v --profiling
 set NO_GRAPHICS=-s USE_SDL=0 -s -D OPENBW_NO_SDL_IMAGE -D OPENBW_NO_SDL_MIXER 
 
@@ -17,7 +17,7 @@ set BUILD_ARGS=%BUILD_ARGS% -s MODULARIZE -s EXPORT_NAME=createOpenBW -s EXPORT_
 set BUILD_ARGS=%BUILD_ARGS% %OPTIMIZATION% %NO_GRAPHICS%
 set BUILD_ARGS=%BUILD_ARGS% %DEBUG% -s ENVIRONMENT=worker -o web/titan.js
 set BUILD_ARGS=%BUILD_ARGS% -s EXPORTED_FUNCTIONS="['_main','_replay_get_value','_replay_set_value','_player_get_value','_load_replay', '_next_frame']"
-em++ %BUILD_ARGS% -s EXPORTED_RUNTIME_METHODS="['callMain', 'ALLOC_NORMAL', 'allocate']"
+em++ %BUILD_ARGS% -s EXPORTED_RUNTIME_METHODS="['callMain', 'ALLOC_NORMAL', 'allocate', 'UTF8ToString']"
 
 REm MINIMAL_RUNTIME 
 

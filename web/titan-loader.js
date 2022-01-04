@@ -2,8 +2,9 @@ import createOpenBw from "./titan.js";
 import "./downgrade.js";
 let openBw;
 
-createOpenBw().then(function (_openBw) {
-   openBw = Object.assign(_openBw, {
+async function init() {
+  console.log("GO")
+  openBw = Object.assign(await createOpenBw(), {
     preRun: [],
     postRun: [],
     locateFile: (path, prefix) => {
@@ -13,7 +14,39 @@ createOpenBw().then(function (_openBw) {
 
   window.openBw = openBw;
   setupCallbacks();
-});
+
+  db_handle = await set_db_handle();
+  db_handle.onerror = function (event) {
+    console.log("Database error: " + event.target.errorCode);
+  };
+
+  try {
+    await load_files_from_indexdb();
+    callMain();
+  $("#select_replay_label").removeClass("disabled");
+} catch (e) {
+    console.warn(e);
+  }
+
+
+  document
+    .getElementById("mpq_files")
+    .addEventListener("change", (evt) => {
+      console.log("file selected")
+      on_mpq_specify_select(evt)
+    } );
+  document
+    .getElementById("select_rep_file")
+    .addEventListener("change", on_rep_file_select, false);
+  document
+    .getElementById("download_rep_file")
+    .addEventListener("change", (e) => on_rep_file_select(e, true), false);
+
+  $("#specify_mpqs_button").on("click", function (e) {
+    print_to_modal("Specify MPQ files", C_SPECIFY_MPQS_MESSAGE, true);
+  });
+}
+
 /*
  * Replay value mappings: _replay_get_value(x):
  *
@@ -29,28 +62,51 @@ createOpenBw().then(function (_openBw) {
 /*****************************
  * Constants
  *****************************/
-var C_PLAYER_ACTIVE = 0;
-var C_USED_ZERG_SUPPLY = 3;
-var C_AVAILABLE_ZERG_SUPPLY = 6;
-var C_RACE = 13;
+var C_FILENAMES = [
+  "units.dat", // arr       //0 
+  "weapons.dat",            //1  
+  "upgrades.dat",           //2
+  "techdata.dat",          //3
+  "flingy.dat",          //4
+  "sprites.dat",         //5
+  "images.dat",        //6
+  "orders.dat",       //7
 
-var C_MPQ_FILENAMES = ["StarDat.mpq", "BrooDat.mpq", "Patch_rt.mpq"];
+  "Melee.trg", // triggers //8
+
+  "badlands.vf4", //Tileset //9
+  "badlands.cv5", //10
+  "platform.vf4",//11
+  "platform.cv5",//12
+  "install.vf4", //13
+  "install.cv5", //14
+  "AshWorld.vf4", //15
+  "AshWorld.cv5", //16
+  "Jungle.vf4",  //17
+  "Jungle.cv5", //18
+  "Desert.vf4", //19
+  "Desert.cv5", //20
+  "Ice.vf4",   //21
+  "Ice.cv5",  //22
+  "Twilight.vf4", //23
+  "Twilight.cv5", //24
+
+  "iscript.bin", // scripts //25
+
+
+
+];
 var C_SPECIFY_MPQS_MESSAGE =
-  "Please select StarDat.mpq, BrooDat.mpq and patch_rt.mpq from your StarCraft directory.";
+  "BAD BOY";
 
 /*****************************
  * Globals
  *****************************/
 
-
 var db_handle;
-var main_has_been_called = false;
-var load_replay_data_arr = null;
-
 var files = [];
 var js_read_buffers = [];
 var is_reading = false;
-var players = [];
 
 /*****************************
  * Functions
@@ -60,34 +116,9 @@ var players = [];
  * Sets the drop box area depending on whether a replay URL is provided or not.
  * Adds the drag and drop functionality.
  */
-jQuery(document).ready(function ($) {
-
-  set_db_handle(function (event) {
-    db_handle = event.target.result;
-    db_handle.onerror = function (event) {
-      // Generic error handler for all errors targeted at this database's requests!
-      console.log("Database error: " + event.target.errorCode);
-    };
-
-    // the db_handle has successfully been obtained. Now attempt to load the MPQs.
-    load_mpq_from_db();
-  });
-
-  document
-    .getElementById("mpq_files")
-    .addEventListener("change", on_mpq_specify_select, false);
-  document
-    .getElementById("select_rep_file")
-    .addEventListener("change", on_rep_file_select, false);
-  document
-    .getElementById("download_rep_file")
-    .addEventListener("change", (e) => on_rep_file_select(e, true), false);
-
-  $("#specify_mpqs_button").on("click", function (e) {
-    print_to_modal("Specify MPQ files", C_SPECIFY_MPQS_MESSAGE, true);
-  });
+jQuery(document).ready(() => {
+  init();
 });
-
 
 //  var funcs = Module.get_util_funcs();
 //    update_production_tab(funcs.get_all_incomplete_units());
@@ -126,6 +157,7 @@ function on_mpq_specify_select(e) {
     var index = index_by_name(input_files[i].name);
     if (index != -1) {
       files[index] = input_files[i];
+      console.log(files)
     } else {
       ++unrecognized_files;
     }
@@ -142,10 +174,10 @@ function on_mpq_specify_select(e) {
 
   var ul = document.getElementById("list");
   while (ul.firstChild) ul.removeChild(ul.firstChild);
-  for (var i = 0; i != C_MPQ_FILENAMES.length; ++i) {
+  for (var i = 0; i != C_FILENAMES.length; ++i) {
     if (files[i]) {
       var li = document.createElement("li");
-      li.appendChild(document.createTextNode(C_MPQ_FILENAMES[i] + " OK"));
+      li.appendChild(document.createTextNode(C_FILENAMES[i] + " OK"));
       ul.appendChild(li);
     }
   }
@@ -153,12 +185,11 @@ function on_mpq_specify_select(e) {
   print_to_modal("Specify MPQ files", status, true);
 
   if (has_all_files()) {
+    console.log("HAS ALL FILES")
     parse_mpq_files();
     store_mpq_in_db();
 
-    $("#play_demo_button").removeClass("disabled");
     $("#select_replay_label").removeClass("disabled");
-    close_modal();
   }
 }
 
@@ -201,16 +232,9 @@ function load_replay_file(files, download) {
         return;
       }
 
-      if (main_has_been_called) {
-        var buf = openBw.allocate(arr, openBw.ALLOC_NORMAL);
-        start_replay(buf, arr.length);
-        openBw._free(buf);
-      } else {
-        load_replay_data_arr = arr;
-        if (has_all_files()) {
-          on_read_all_done();
-        }
-      }
+      var buf = openBw.allocate(arr, openBw.ALLOC_NORMAL);
+      start_replay(buf, arr.length);
+      openBw._free(buf);
     };
   })();
   reader.readAsArrayBuffer(files[0]);
@@ -228,27 +252,21 @@ function js_fatal_error(ptr) {
   );
 }
 
-const print_to_canvas = (...args) => console.log(...args);
-
 function print_to_modal(title, text, mpqspecify) {
   $("#rv_modal h3").html(title);
   $("#rv_modal p").html(text);
-  if (mpqspecify) {
-    $("#mpq_specify").css("display", "inline-block");
-  } else {
-    $("#mpq_specify").css("display", "none");
-  }
+  // if (mpqspecify) {
+  //   $("#mpq_specify").css("display", "inline-block");
+  // } else {
+  //   $("#mpq_specify").css("display", "none");
+  // }
 
   //@todo open modal
 }
 
-function close_modal() {
-  //@todo close modal
-}
-
 function index_by_name(name) {
-  for (var i = 0; i != C_MPQ_FILENAMES.length; ++i) {
-    if (C_MPQ_FILENAMES[i].toLowerCase() == name.toLowerCase()) {
+  for (var i = 0; i != C_FILENAMES.length; ++i) {
+    if (C_FILENAMES[i].toLowerCase() == name.toLowerCase()) {
       return i;
     }
   }
@@ -256,7 +274,7 @@ function index_by_name(name) {
 }
 
 function has_all_files() {
-  for (var i = 0; i != C_MPQ_FILENAMES.length; ++i) {
+  for (var i = 0; i != C_FILENAMES.length; ++i) {
     if (!files[i]) return false;
   }
   return true;
@@ -269,80 +287,94 @@ function has_all_files() {
 function setupCallbacks() {
   openBw.setupCallbacks(
     js_fatal_error,
-     js_pre_main_loop, 
-     js_post_main_loop, 
-     js_file_size, 
-     js_read_data,
-     js_load_done
-  )
-};
+    js_pre_main_loop,
+    js_post_main_loop,
+    js_file_size,
+    js_read_data,
+    js_load_done,
+    js_file_index
+  );
+}
 
-const js_pre_main_loop = () => {}
+const js_pre_main_loop = () => {};
 
 const js_post_main_loop = () => {
   console.log(`frame: ${openBw._replay_get_value(2)}`);
-}
+};
 
-const js_read_data =  (index, dst, offset, size) => {
+const js_read_data = (index, dst, offset, size) => {
   var data = js_read_buffers[index];
   for (var i2 = 0; i2 != size; ++i2) {
     openBw.HEAP8[dst + i2] = data[offset + i2];
   }
+};
+
+const js_file_index = ($0) => {
+  var filename = openBw.UTF8ToString($0);
+  var index = files.indexOf(filename);
+  return index >= 0 ? index : 99;
 }
 
-const js_file_size= (index) => {
+const js_file_size = (index) => {
   return files[index].size;
-}
+};
 
 const js_load_done = () => {
   js_read_buffers = null;
-}
+};
 
 /*****************************
  * Database Functions
  *****************************/
 
-function set_db_handle(success_callback) {
-  if (window.indexedDB) {
-    var request = window.indexedDB.open("OpenBW_DB", 1);
+function set_db_handle() {
+  return new Promise((res, rej) => {
+    if (window.indexedDB) {
+      var request = window.indexedDB.open("OpenBW_DB", 1);
 
-    request.onerror = function (event) {
-      console.log("Could not open OpenBW_DB.");
-      print_to_modal("Specify MPQ files", C_SPECIFY_MPQS_MESSAGE, true);
-    };
+      request.onerror = function (event) {
+        rej("Could not open OpenBW_DB.");
+        print_to_modal("Specify MPQ files", C_SPECIFY_MPQS_MESSAGE, true);
+      };
 
-    request.onsuccess = success_callback;
+      request.onsuccess = (event) => res(event.target.result);
 
-    request.onupgradeneeded = function (event) {
-      db_handle = event.target.result;
-      var objectStore = db_handle.createObjectStore("mpqs", {
-        keyPath: "mpqkp",
-      });
-      console.log("Database update/create done.");
-    };
-  } else {
-    console.log("indexedDB not supported.");
-  }
+      request.onupgradeneeded = function (event) {
+        db_handle = event.target.result;
+        var objectStore = db_handle.createObjectStore("mpqs", {
+          keyPath: "mpqkp",
+        });
+        console.log("Database update/create done.");
+      };
+    } else {
+      rej("indexedDB not supported");
+    }
+  });
 }
 
-function get_blob(store, key, file_index, callback) {
+function load_file_from_indexdb(store, key, file_index) {
   var request = store.get(key);
-  request.onerror = function (event) {
-    console.log("Could not retrieve " + key + " from DB.");
-    print_to_modal("Loading MPQs", key + ": failed.");
-  };
-  request.onsuccess = function (event) {
-    files[file_index] = request.result.blob;
-    console.log(
-      "read " +
-        request.result.mpqkp +
-        "; size: " +
-        request.result.blob.length +
-        ": success."
-    );
-    print_to_modal("Loading MPQs", key + ": success.");
-    callback(file_index);
-  };
+  return new Promise((res, rej) => {
+    request.onerror = function (event) {
+      console.log("Could not retrieve " + key + " from DB.");
+      rej("Could not retrieve " + key + " from DB.");
+    };
+    request.onsuccess = function (event) {
+      if (request.result ===  undefined) {
+        rej("Result was undefined");
+        return;
+      }
+      console.log(
+        "read " +
+          key +
+          "; size: " +
+          request.result.blob.length +
+          ": success."
+      );
+      print_to_modal("Loading MPQs", key + ": success.");
+      res(request.result.blob);
+    };
+  });
 }
 
 function store_blob(store, key, file) {
@@ -364,143 +396,71 @@ function store_mpq_in_db() {
     var transaction = db_handle.transaction(["mpqs"], "readwrite");
     var store = transaction.objectStore("mpqs");
 
-    for (var file_index = 0; file_index < 3; file_index++) {
-      store.delete(C_MPQ_FILENAMES[file_index]);
-      store_blob(store, C_MPQ_FILENAMES[file_index], files[file_index]);
+    for (var file_index = 0; file_index < C_FILENAMES.length; file_index++) {
+      store.delete(C_FILENAMES[file_index]);
+      store_blob(store, C_FILENAMES[file_index], files[file_index]);
     }
   } else {
     console.log("Cannot store MPQs because DB handle is not available.");
   }
 }
 
-function load_mpq_from_db() {
-  var transaction = db_handle.transaction(["mpqs"]);
-  var objectStore = transaction.objectStore("mpqs");
-  console.log("attempting to retrieve files from db...");
+function load_files_from_indexdb() {
+  return new Promise(async (res, rej) => {
+    var transaction = db_handle.transaction(["mpqs"]);
+    var objectStore = transaction.objectStore("mpqs");
+    console.log("attempting to retrieve files from db...");
 
-  var callback = function (index) {
-    if (index == 2) {
-      if (has_all_files()) {
-        console.log("all files read.");
-        close_modal();
-        parse_mpq_files();
-      } else {
-        print_to_modal("Specify MPQ files", C_SPECIFY_MPQS_MESSAGE, true);
+    try {
+      for (var file_index = 0; file_index < C_FILENAMES.length; file_index++) {
+        files[file_index] = await load_file_from_indexdb(objectStore, C_FILENAMES[file_index], file_index);
       }
-    }
-  };
 
-  for (var file_index = 0; file_index < 3; file_index++) {
-    get_blob(objectStore, C_MPQ_FILENAMES[file_index], file_index, callback);
-  }
+      console.log("all files loaded from index.");
+      parse_mpq_files().then(res);
+    } catch (e) {
+      rej("Error while loading MPQs from DB: " + e);
+    }
+    
+  });
 }
 
-/*****************************
- * Other
- *****************************/
-
-function load_replay_url(url) {
-  print_to_modal("Status", "Downloading " + url + "...");
-
-  var req = new XMLHttpRequest();
-  req.onreadystatechange = function () {
-    if (req.readyState == XMLHttpRequest.DONE && req.status == 200) {
-      var arr = new Int8Array(req.response);
-      var buf = openBw.allocate(arr, openBw.ALLOC_NORMAL);
-      start_replay(buf, arr.length);
-      openBw._free(buf);
-    } else {
-      print_to_modal("Status", "fetching " + url + ": " + req.statusText);
-    }
-  };
-  req.responseType = "arraybuffer";
-  req.open("GET", url, true);
-  req.send();
+let _mainCalled = false;
+function callMain() {
+  try {
+    !_mainCalled && openBw.callMain();
+    _mainCalled = true;
+  } catch (e) {
+    console.error(openBw.getExceptionMessage(e));
+  }
 }
 
 function start_replay(buffer, length) {
-  close_modal();
-
-  if (!main_has_been_called) {
-    try {
-      openBw.callMain();
-    } catch (e) {
-      console.error(openBw.getExceptionMessage(e));
-    }
-    main_has_been_called = true;
-  }
-
   openBw._load_replay(buffer, length);
-
-  players = [];
-  for (var i = 0; i != 12; ++i) {
-    if (openBw._player_get_value(i, C_PLAYER_ACTIVE)) {
-      var race = openBw._player_get_value(i, C_RACE);
-      var used_supply = openBw._player_get_value(i, C_USED_ZERG_SUPPLY + race);
-      var available_supply = openBw._player_get_value(
-        i,
-        C_AVAILABLE_ZERG_SUPPLY + race
-      );
-
-      if (used_supply == 4 && available_supply > 0) {
-        players.push(i);
-      }
-    }
-  }
-
-}
-
-function on_read_all_done() {
-  // if a replay is specified, then run it. else do nothing
-
-  if (load_replay_data_arr) {
-    var arr = load_replay_data_arr;
-    load_replay_data_arr = null;
-    var buf = openBw.allocate(arr, openBw.ALLOC_NORMAL);
-    start_replay(buf, arr.length);
-    openBw._free(buf);
-  } else {
-    var inputs = {};
-    var optstr = document.location.search.substr(1);
-    if (optstr) {
-      var s = optstr.split("&");
-      for (var i = 0; i != s.length; ++i) {
-        var str = s[i];
-        var t = str.split("=");
-        if (t[0] && t[1]) {
-          inputs[decodeURIComponent(t[0])] = decodeURIComponent(t[1]);
-        }
-      }
-    }
-    console.log("inputs", inputs);
-    if (inputs.url) {
-      load_replay_url(inputs.url);
-    } else if (ajax_object.replay_file != null) {
-      load_replay_url(ajax_object.replay_file);
-    } else {
-      $("#select_replay_label").removeClass("disabled");
-    }
-  }
 }
 
 function parse_mpq_files() {
   if (is_reading) return;
-  is_reading = true;
-  var reads_in_progress = 3;
-  for (var i = 0; i != 3; ++i) {
-    var reader = new FileReader();
-    (function () {
-      var index = i;
-      reader.onloadend = function (e) {
-        if (!e.target.error && e.target.readyState != FileReader.DONE)
-          throw "read failed with no error!?";
-        if (e.target.error) throw "read failed: " + e.target.error;
-        js_read_buffers[index] = new Int8Array(e.target.result);
-        --reads_in_progress;
+  return new Promise((res, rej) => {
+    is_reading = true;
+    var reads_in_progress = C_FILENAMES.length;
+    for (var i = 0; i != C_FILENAMES.length; ++i) {
+      var reader = new FileReader();
+      (function () {
+        var index = i;
+        reader.onloadend = function (e) {
+          if (!e.target.error && e.target.readyState != FileReader.DONE)
+            throw "read failed with no error!?";
+          if (e.target.error) throw "read failed: " + e.target.error;
+          js_read_buffers[index] = new Int8Array(e.target.result);
+          --reads_in_progress;
 
-        if (reads_in_progress == 0) on_read_all_done();
-      };
-    })();
-    reader.readAsArrayBuffer(files[i]);
-  }
+          if (reads_in_progress == 0) {
+            res();
+          }
+        };
+      })();
+      reader.readAsArrayBuffer(files[i]);
+    }
+  });
 }

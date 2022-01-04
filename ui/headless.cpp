@@ -280,6 +280,30 @@ namespace bwgame
 	namespace data_loading
 	{
 
+	template<typename file_reader_T = file_reader<>>
+	struct bin_file {
+		file_reader_T file;
+		explicit bin_file(a_string filename) : file(std::move(filename)) {}
+
+		const char * name() {
+			const char* c = file.filename.data() + file.filename.size();
+			while (c != file.filename.data()) {
+				auto pc = *(c - 1);
+				if (pc == '/' || pc == '\\') break;
+				--c;
+			}
+			return c;
+		}
+
+		void operator()(a_vector<uint8_t>& dst, a_string filename) {
+			file.open(std::move(filename));
+			size_t len = file.size();
+			dst.resize(len);
+			file.get_bytes(dst.data(), len);
+			return;
+		}
+	};
+
 		template <bool default_little_endian = true>
 		struct js_file_reader
 		{
@@ -291,16 +315,21 @@ namespace bwgame
 			{
 				open(std::move(filename));
 			}
+
+			int get_file_index(a_string filename) {
+				#ifdef __EMSCRIPTEN__
+					return EM_ASM_INT({ return js_file_index($0); }, filename.data());
+				#else
+					return 0;
+				#endif
+			}
+
 			void open(a_string filename)
 			{
-				if (filename == "StarDat.mpq")
-					index = 0;
-				else if (filename == "BrooDat.mpq")
-					index = 1;
-				else if (filename == "Patch_rt.mpq")
-					index = 2;
-				else
+				index = get_file_index(filename);
+				if (index == 99) {
 					ui::xcept("js_file_reader: unknown filename '%s'", filename);
+				}
 				this->filename = std::move(filename);
 			}
 
@@ -1069,8 +1098,13 @@ int main()
 	std::chrono::high_resolution_clock clock;
 	auto start = clock.now();
 
-	auto load_data_file = data_loading::data_files_directory<data_loading::data_files_loader<data_loading::mpq_file<data_loading::js_file_reader<>>>>("");
-	log("mpqs loaded\n");
+	// data_loading::data_files_loader
+	// data_loading::mpq_file
+	// data_loading::js_file_reader
+
+	// auto load_data_file = data_loading::data_files_directory<data_loading::data_files_loader<data_loading::mpq_file<data_loading::js_file_reader<>>>>("");
+	auto load_data_file = data_loading::bin_file<data_loading::js_file_reader<>>("");
+	log("files loaded\n");
 
 	game_player player(load_data_file);
 
