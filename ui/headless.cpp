@@ -280,7 +280,6 @@ namespace bwgame
 	namespace data_loading
 	{
 
-        //directory
 		template<typename file_reader_T = file_reader<>>
 		struct simple_reader {
 			void operator()(a_vector<uint8_t>& dst, a_string filename) {
@@ -1057,6 +1056,18 @@ extern "C" double player_get_value(int player, int index)
 
 bool any_replay_loaded = false;
 
+
+// @todo add next_frame_exact
+extern "C" void next_frame_exact()
+{
+	m->ui.replay_functions::next_frame();
+
+	#ifdef __EMSCRIPTEN_PTHREADS__
+		MAIN_THREAD_ASYNC_EM_ASM({ js_post_main_loop(); });
+	#else
+		EM_ASM({ js_post_main_loop(); });
+	#endif
+}
 
 // @todo add next_frame_exact
 extern "C" void next_frame()

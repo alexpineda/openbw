@@ -16,7 +16,7 @@ set BUILD_ARGS=%BUILD_ARGS% -s MODULARIZE -s EXPORT_NAME=createOpenBW -s EXPORT_
 @REM set BUILD_ARGS=%BUILD_ARGS% %PTHREAD% 
 set BUILD_ARGS=%BUILD_ARGS% %OPTIMIZATION% %NO_GRAPHICS%
 set BUILD_ARGS=%BUILD_ARGS% %DEBUG% -s ENVIRONMENT=worker -o web/titan.js
-set BUILD_ARGS=%BUILD_ARGS% -s EXPORTED_FUNCTIONS="['_main','_replay_get_value','_replay_set_value','_player_get_value','_load_replay', '_next_frame']"
+set BUILD_ARGS=%BUILD_ARGS% -s EXPORTED_FUNCTIONS="['_main','_replay_get_value','_replay_set_value','_player_get_value','_load_replay', '_next_frame', '_next_frame_exact']"
 em++ %BUILD_ARGS% -s EXPORTED_RUNTIME_METHODS="['callMain', 'ALLOC_NORMAL', 'allocate', 'UTF8ToString']"
 
 REm MINIMAL_RUNTIME 

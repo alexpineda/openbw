@@ -417,6 +417,7 @@ function callMain() {
 
 function start_replay(buffer, length) {
   openBw._load_replay(buffer, length);
+  console.log("replay loaded");
 }
 
 function files_to_uint8array_buffers() {
