@@ -1,5 +1,8 @@
 import createOpenBw from "./titan.js";
 import "./downgrade.js";
+import _files from "./list.js";
+
+console.log("empty", _files.some(f => f.trim() === ""));
 let openBw;
 
 async function init() {
@@ -62,40 +65,7 @@ async function init() {
 /*****************************
  * Constants
  *****************************/
-var C_FILENAMES = [
-  "units.dat", // arr       //0 
-  "weapons.dat",            //1  
-  "upgrades.dat",           //2
-  "techdata.dat",          //3
-  "flingy.dat",          //4
-  "sprites.dat",         //5
-  "images.dat",        //6
-  "orders.dat",       //7
-
-  "Melee.trg", // triggers //8
-
-  "badlands.vf4", //Tileset //9
-  "badlands.cv5", //10
-  "platform.vf4",//11
-  "platform.cv5",//12
-  "install.vf4", //13
-  "install.cv5", //14
-  "AshWorld.vf4", //15
-  "AshWorld.cv5", //16
-  "Jungle.vf4",  //17
-  "Jungle.cv5", //18
-  "Desert.vf4", //19
-  "Desert.cv5", //20
-  "Ice.vf4",   //21
-  "Ice.cv5",  //22
-  "Twilight.vf4", //23
-  "Twilight.cv5", //24
-
-  "iscript.bin", // scripts //25
-
-
-
-];
+var C_FILENAMES = _files;
 var C_SPECIFY_MPQS_MESSAGE =
   "BAD BOY";
 
@@ -186,8 +156,8 @@ function on_mpq_specify_select(e) {
 
   if (has_all_files()) {
     console.log("HAS ALL FILES")
-    parse_mpq_files();
-    store_mpq_in_db();
+    files_to_uint8array_buffers();
+    store_files_in_indexdb();
 
     $("#select_replay_label").removeClass("disabled");
   }
@@ -241,7 +211,7 @@ function load_replay_file(files, download) {
 }
 
 function js_fatal_error(ptr) {
-  var str = UTF8ToString(ptr);
+  var str = openBw.UTF8ToString(ptr);
 
   print_to_modal(
     "Fatal error: Unimplemented",
@@ -275,7 +245,10 @@ function index_by_name(name) {
 
 function has_all_files() {
   for (var i = 0; i != C_FILENAMES.length; ++i) {
-    if (!files[i]) return false;
+    if (!files[i]) {
+      console.warn(`missing ${C_FILENAMES[i]}`)
+       return false;
+    }
   }
   return true;
 }
@@ -309,10 +282,17 @@ const js_read_data = (index, dst, offset, size) => {
   }
 };
 
+const filenameFromPath = function (str) {
+  return str.split('\\').pop().split('/').pop();
+}
+
 const js_file_index = ($0) => {
-  var filename = openBw.UTF8ToString($0);
-  var index = files.indexOf(filename);
-  return index >= 0 ? index : 99;
+  var filename = filenameFromPath(openBw.UTF8ToString($0));
+
+  var index = files.findIndex(item => 
+    filename.toLowerCase() === item.name.toLowerCase());
+  console.log(filename, index)
+  return index >= 0 ? index : 9999;
 }
 
 const js_file_size = (index) => {
@@ -352,7 +332,7 @@ function set_db_handle() {
   });
 }
 
-function load_file_from_indexdb(store, key, file_index) {
+function load_file_metadata_from_indexdb(store, key, file_index) {
   var request = store.get(key);
   return new Promise((res, rej) => {
     request.onerror = function (event) {
@@ -391,7 +371,7 @@ function store_blob(store, key, file) {
   };
 }
 
-function store_mpq_in_db() {
+function store_files_in_indexdb() {
   if (db_handle != null) {
     var transaction = db_handle.transaction(["mpqs"], "readwrite");
     var store = transaction.objectStore("mpqs");
@@ -413,11 +393,11 @@ function load_files_from_indexdb() {
 
     try {
       for (var file_index = 0; file_index < C_FILENAMES.length; file_index++) {
-        files[file_index] = await load_file_from_indexdb(objectStore, C_FILENAMES[file_index], file_index);
+        files[file_index] = await load_file_metadata_from_indexdb(objectStore, C_FILENAMES[file_index], file_index);
       }
 
       console.log("all files loaded from index.");
-      parse_mpq_files().then(res);
+      files_to_uint8array_buffers().then(res);
     } catch (e) {
       rej("Error while loading MPQs from DB: " + e);
     }
@@ -439,7 +419,7 @@ function start_replay(buffer, length) {
   openBw._load_replay(buffer, length);
 }
 
-function parse_mpq_files() {
+function files_to_uint8array_buffers() {
   if (is_reading) return;
   return new Promise((res, rej) => {
     is_reading = true;
