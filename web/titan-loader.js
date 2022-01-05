@@ -7,14 +7,8 @@ let openBw;
 
 async function init() {
   console.log("GO")
-  openBw = Object.assign(await createOpenBw(), {
-    preRun: [],
-    postRun: [],
-    locateFile: (path, prefix) => {
-      return `${prefix + path}`;
-    },
-  });
-
+  openBw = await createOpenBw();
+  
   window.openBw = openBw;
   setupCallbacks();
 
@@ -287,6 +281,7 @@ const filenameFromPath = function (str) {
 }
 
 const js_file_index = ($0) => {
+  console.log(`file index: ${openBw.UTF8ToString($0)}`);
   var filename = filenameFromPath(openBw.UTF8ToString($0));
 
   var index = files.findIndex(item => 
@@ -296,6 +291,8 @@ const js_file_index = ($0) => {
 }
 
 const js_file_size = (index) => {
+  console.log(`file size: ${index} ${files[index].size}`);
+  console.log(`file size: ${index} ${js_read_buffers[index].byteLength}`);
   return files[index].size;
 };
 
@@ -444,4 +441,23 @@ function files_to_uint8array_buffers() {
       reader.readAsArrayBuffer(files[i]);
     }
   });
+}
+
+window.next = () => {
+  openBw._next_frame();
+  console.log("tiles", openBw._counts(0, 0));
+  console.log("units", openBw._counts(0, 1));
+  console.log("upgrades", openBw._counts(0, 2));
+  console.log("research", openBw._counts(0, 3));
+  console.log("sprite", openBw._counts(0, 4));
+  console.log("image", openBw._counts(0, 5));
+  console.log("sound", openBw._counts(0, 6));
+  console.log("building queue", openBw._counts(0, 7));
+  for (let i = 0; i < 8; ++i) {
+    console.log("minerals", openBw._counts(i, 8));
+    console.log("gas", openBw._counts(i, 9));
+    console.log("workers", openBw._counts(i, 12));
+    console.log("army", openBw._counts(i, 13));
+  }
+  
 }

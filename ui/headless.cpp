@@ -438,6 +438,36 @@ struct util_functions : state_functions
 {
 	util_functions(state &st) : state_functions(st) {}
 
+	uint32_t sprite_depth_order(const sprite_t* sprite) const {
+			uint32_t score = 0;
+			score |= sprite->elevation_level;
+			score <<= 13;
+			score |= sprite->elevation_level <= 4 ? sprite->position.y : 0;
+			score <<= 1;
+			score |= s_flag(sprite, sprite_t::flag_turret) ? 1 : 0;
+			return score;
+	}
+
+	auto sort_sprites() {
+		a_vector<std::pair<uint32_t, const sprite_t*>> sorted_sprites;
+
+		sorted_sprites.clear();
+
+		
+		for (size_t i = 0; i != st.sprites_on_tile_line.size(); ++i) {
+			for (sprite_t* sprite : ptr(st.sprites_on_tile_line[i])) {
+				if (sprite != nullptr) {
+					if (s_hidden(sprite)) continue;
+					sorted_sprites.emplace_back(sprite_depth_order(sprite), sprite);
+				}
+			}
+		}
+
+		std::sort(sorted_sprites.begin(), sorted_sprites.end());
+
+		return sorted_sprites;
+	}
+
 	double worker_supply(int owner)
 	{
 		double r = 0.0;
@@ -649,6 +679,71 @@ struct util_functions : state_functions
 			r.set(i++, u);
 		}
 		return r;
+	}
+
+	auto count_units() {
+		int unit_count = 0;
+		for (int owner = 0; owner < 12; owner++) {
+			for (unit_t* u : ptr(st.player_units[owner])) {
+				unit_count++;
+			}
+		}
+		return unit_count;
+	}
+
+	auto count_research() {
+		int research_count = 0;
+		for (int owner = 0; owner < 12; owner++) {
+			for (unit_t* u : ptr(st.player_units[owner])) {
+				if (u->order_type->id == Orders::ResearchTech && u->building.researching_type)
+				{
+					research_count++;
+				}
+			}
+		}
+		return research_count;
+	}
+
+	auto count_upgrades() {
+		int upgrade_count = 0;
+		for (int owner = 0; owner < 12; owner++) {
+			for (unit_t* u : ptr(st.player_units[owner])) {
+
+				if (u->order_type->id == Orders::Upgrade && u->building.upgrading_type)
+				{
+					upgrade_count++;
+				}
+			}
+		}
+		return upgrade_count;
+	}
+
+	auto count_images() {
+		int image_count = 0;
+		for (auto& v : sort_sprites()) {
+			for (const image_t* image : ptr(v.second->images)) {
+				image_count++;
+			}
+		}
+		return image_count;
+	}
+
+	auto count_building_queue() {
+		int build_queue_count = 0;
+			for (unit_t* u : ptr(st.visible_units)) {
+				if (u->build_queue.size() > 0) {
+					build_queue_count++;
+				}
+
+				// loaded units included in queue count
+				for (bwgame::unit_id uid : u->loaded_units) {
+					if (uid.raw_value != 0) {
+						build_queue_count++;
+						break;
+					}
+				}
+			}
+		return build_queue_count;
 	}
 };
 
@@ -1013,42 +1108,59 @@ EMSCRIPTEN_BINDINGS(openbw)
 	// loaded_units
 }
 
-extern "C" double player_get_value(int player, int index)
+
+// return m->ui.st.players.at(player).controller == player_t::controller_occupied ? 1 : 0;
+// 	case 14:
+// 		return (double)m->ui.apm.at(player).current_apm;
+
+extern "C" int counts(int player, int index)
 {
 	if (player < 0 || player >= 12)
 		return 0;
+
 	switch (index)
 	{
-	case 0:
-		return m->ui.st.players.at(player).controller == player_t::controller_occupied ? 1 : 0;
-	case 1:
-		return (double)m->ui.st.players.at(player).color;
-	case 2:
-		return (double)(uintptr_t)m->ui.replay_st.player_name.at(player).data();
-	case 3:
-		return m->ui.st.supply_used.at(player)[0].raw_value / 2.0;
-	case 4:
-		return m->ui.st.supply_used.at(player)[1].raw_value / 2.0;
-	case 5:
-		return m->ui.st.supply_used.at(player)[2].raw_value / 2.0;
-	case 6:
-		return std::min(m->ui.st.supply_available.at(player)[0].raw_value / 2.0, 200.0);
-	case 7:
-		return std::min(m->ui.st.supply_available.at(player)[1].raw_value / 2.0, 200.0);
+	case 0: //tiles
+		return m->ui.st.tiles.size();
+	case 1: //unit count
+		return util_functions(m->ui.st).count_units();
+	case 2: // upgrade count
+		return util_functions(m->ui.st).count_upgrades();
+	case 3: // research count
+		return util_functions(m->ui.st).count_research();
+	case 4: // sprite count
+		return util_functions(m->ui.st).sort_sprites().size();
+	case 5: // image count
+		return util_functions(m->ui.st).count_images();
+	case 6: // sound count
+		return m->ui.played_sounds.size();
+	case 7: // building queue count	
+		return util_functions(m->ui.st).count_building_queue();
 	case 8:
-		return std::min(m->ui.st.supply_available.at(player)[2].raw_value / 2.0, 200.0);
+		return m->ui.st.current_minerals.at(player);
 	case 9:
-		return (double)m->ui.st.current_minerals.at(player);
+		return m->ui.st.current_gas.at(player);
 	case 10:
-		return (double)m->ui.st.current_gas.at(player);
+		return 0; // @todo implement
+	// case 10:
+	// 	return m->ui.st.supply_used.at(player)[0].raw_value / 2.0;
+	// case 10:
+	// 	return m->ui.st.supply_used.at(player)[1].raw_value / 2.0;
+	// case 10:
+	// 	return m->ui.st.supply_used.at(player)[2].raw_value / 2.0;
 	case 11:
-		return util_functions(m->ui.st).worker_supply(player);
+		return 0; // @todo implement
+	// case 11:
+	// 	return std::min(m->ui.st.supply_available.at(player)[0].raw_value / 2.0, 200.0);
+	// case 11:
+	// 	return std::min(m->ui.st.supply_available.at(player)[1].raw_value / 2.0, 200.0);
+	// case 11:
+	// 	return std::min(m->ui.st.supply_available.at(player)[2].raw_value / 2.0, 200.0);
+
 	case 12:
-		return util_functions(m->ui.st).army_supply(player);
+		return util_functions(m->ui.st).worker_supply(player);
 	case 13:
-		return (double)(int)m->ui.st.players.at(player).race;
-	case 14:
-		return (double)m->ui.apm.at(player).current_apm;
+		return util_functions(m->ui.st).army_supply(player);
 	default:
 		return 0;
 	}
