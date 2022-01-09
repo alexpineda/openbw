@@ -50,10 +50,10 @@ namespace bwgame
 
 	struct played_sound
 	{
-		int id;
-		int x;
-		int y;
-		int unit_type_id = -1;
+		int32_t id;
+		int32_t x;
+		int32_t y;
+		int32_t unit_type_id = -1;
 	};
 
 	struct titan_replay_functions : replay_functions

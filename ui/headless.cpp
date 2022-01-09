@@ -6,6 +6,7 @@
 #include "common.h"
 #include "bwgame.h"
 #include "replay.h"
+#include "util.h"
 
 #include <chrono>
 #include <thread>
@@ -38,11 +39,11 @@ namespace bwgame
 		void fatal_error_str(a_string str)
 		{
 			const char *p = str.c_str();
-			#ifdef __EMSCRIPTEN_PTHREADS__
-				MAIN_THREAD_EM_ASM({ js_fatal_error($0); }, p);
-			#else
-				EM_ASM({ js_fatal_error($0); }, p);
-			#endif
+#ifdef __EMSCRIPTEN_PTHREADS__
+			MAIN_THREAD_EM_ASM({ js_fatal_error($0); }, p);
+#else
+			EM_ASM({ js_fatal_error($0); }, p);
+#endif
 			log("fatal error: %s\n", str);
 			std::terminate();
 		}
@@ -189,6 +190,8 @@ struct main_t
 			}
 		}
 
+		//printf("sounds after loop %d\n", (int)ui.played_sounds.size());
+
 		return true;
 	}
 };
@@ -206,11 +209,11 @@ void out_of_memory()
 {
 	printf("out of memory :(\n");
 	const char *p = "out of memory :(";
-	#ifdef __EMSCRIPTEN_PTHREADS__
-		MAIN_THREAD_EM_ASM({ js_fatal_error($0); }, p);
-	#else
-		EM_ASM({ js_fatal_error($0); }, p);
-	#endif
+#ifdef __EMSCRIPTEN_PTHREADS__
+	MAIN_THREAD_EM_ASM({ js_fatal_error($0); }, p);
+#else
+	EM_ASM({ js_fatal_error($0); }, p);
+#endif
 	throw std::bad_alloc();
 }
 
@@ -280,9 +283,11 @@ namespace bwgame
 	namespace data_loading
 	{
 
-		template<typename file_reader_T = file_reader<>>
-		struct simple_reader {
-			void operator()(a_vector<uint8_t>& dst, a_string filename) {
+		template <typename file_reader_T = file_reader<>>
+		struct simple_reader
+		{
+			void operator()(a_vector<uint8_t> &dst, a_string filename)
+			{
 				file_reader_T file = file_reader_T(std::move(filename));
 				size_t len = file.size();
 				dst.resize(len);
@@ -303,18 +308,20 @@ namespace bwgame
 				open(std::move(filename));
 			}
 
-			int get_file_index(a_string filename) {
-				#ifdef __EMSCRIPTEN__
-					return EM_ASM_INT({ return js_file_index($0); }, filename.data());
-				#else
-					return 0;
-				#endif
+			int get_file_index(a_string filename)
+			{
+#ifdef __EMSCRIPTEN__
+				return EM_ASM_INT({ return js_file_index($0); }, filename.data());
+#else
+				return 0;
+#endif
 			}
 
 			void open(a_string filename)
 			{
 				index = get_file_index(filename);
-				if (index == 9999) {
+				if (index == 9999)
+				{
 					ui::xcept("js_file_reader: unknown filename '%s'", filename);
 				}
 				this->filename = std::move(filename);
@@ -322,12 +329,12 @@ namespace bwgame
 
 			void get_bytes(uint8_t *dst, size_t n)
 			{
-				
-				#ifdef __EMSCRIPTEN_PTHREADS__
-					MAIN_THREAD_EM_ASM({ js_read_data($0, $1, $2, $3); }, index, dst, file_pointer, n);
-				#else
-					EM_ASM({ js_read_data($0, $1, $2, $3); }, index, dst, file_pointer, n);
-				#endif
+
+#ifdef __EMSCRIPTEN_PTHREADS__
+				MAIN_THREAD_EM_ASM({ js_read_data($0, $1, $2, $3); }, index, dst, file_pointer, n);
+#else
+				EM_ASM({ js_read_data($0, $1, $2, $3); }, index, dst, file_pointer, n);
+#endif
 				file_pointer += n;
 			}
 
@@ -342,11 +349,11 @@ namespace bwgame
 
 			size_t size()
 			{
-				#ifdef __EMSCRIPTEN_PTHREADS__
-					return MAIN_THREAD_EM_ASM_INT({ return js_file_size($0); }, index);
-				#else
-					return EM_ASM_INT({ return js_file_size($0); }, index);
-				#endif
+#ifdef __EMSCRIPTEN_PTHREADS__
+				return MAIN_THREAD_EM_ASM_INT({ return js_file_size($0); }, index);
+#else
+				return EM_ASM_INT({ return js_file_size($0); }, index);
+#endif
 			}
 		};
 
@@ -438,26 +445,272 @@ struct util_functions : state_functions
 {
 	util_functions(state &st) : state_functions(st) {}
 
-	uint32_t sprite_depth_order(const sprite_t* sprite) const {
-			uint32_t score = 0;
-			score |= sprite->elevation_level;
-			score <<= 13;
-			score |= sprite->elevation_level <= 4 ? sprite->position.y : 0;
-			score <<= 1;
-			score |= s_flag(sprite, sprite_t::flag_turret) ? 1 : 0;
-			return score;
+#define STR(a) #a
+#define DUMP_VAL(name) o.set(STR(name), to_emscripten(dumping->name))
+#define DUMP_VAL_AS(aka, name) o.set(STR(aka), to_emscripten(dumping->name))
+#define DUMP_POS(field) o.set(STR(field), dump_pos(dumping->field))
+
+	template <typename T>
+	val to_emscripten(T &v)
+	{
+		return val(v);
+	}
+	val to_emscripten(fp8 &v)
+	{
+		double as_double = v.raw_value;
+		as_double /= (1 << v.fractional_bits);
+		return val(as_double);
 	}
 
-	auto sort_sprites() {
-		a_vector<std::pair<uint32_t, const sprite_t*>> sorted_sprites;
+	template <typename T>
+	val to_emscripten(id_type_for<T> *v)
+	{
+		if (!v)
+		{
+			return val::null();
+		}
+		return val((int)v->id);
+	}
+
+	val to_emscripten(unit_t *unit)
+	{
+		util_functions f(m->ui.st);
+		if (!unit)
+		{
+			return val::null();
+		}
+		return val(f.get_unit_id(unit).raw_value);
+	}
+
+	template <typename T>
+	val dump_pos(T &pos)
+	{
+		val o = val::object();
+		o.set("x", to_emscripten(pos.x));
+		o.set("y", to_emscripten(pos.y));
+		return o;
+	}
+
+	val dump_sprite(sprite_t *dumping)
+	{
+		val o = val::object();
+		DUMP_VAL(index);
+		DUMP_VAL(owner);
+		DUMP_VAL(selection_index);
+		DUMP_VAL(visibility_flags);
+		DUMP_VAL(elevation_level);
+		DUMP_VAL(flags);
+		DUMP_VAL(selection_timer);
+		DUMP_VAL(width);
+		DUMP_VAL(height);
+		DUMP_POS(position);
+		return o;
+	}
+
+	val dump_thingy(thingy_t *dumping)
+	{
+		val o = val::object();
+		DUMP_VAL(hp);
+		o.set("sprite", dump_sprite(dumping->sprite));
+		return o;
+	}
+
+	val dump_target(target_t *dumping)
+	{
+		val o = val::object();
+		DUMP_POS(pos);
+		DUMP_VAL(unit);
+		return o;
+	}
+
+	val dump_flingy(flingy_t *dumping)
+	{
+		val o = val::object();
+		DUMP_VAL(index);
+		o.set("move_target", dump_target(&dumping->move_target));
+		DUMP_POS(next_movement_waypoint);
+		DUMP_POS(next_target_waypoint);
+		DUMP_VAL(movement_flags);
+		DUMP_POS(position);
+		DUMP_POS(exact_position);
+		DUMP_VAL(flingy_top_speed);
+		DUMP_VAL(current_speed);
+		DUMP_VAL(next_speed);
+		DUMP_POS(velocity);
+		DUMP_VAL(flingy_acceleration);
+		o.set("sprite", dump_sprite(dumping->sprite));
+		o.set("_thingy_t", dump_thingy(dumping));
+		return o;
+	}
+
+	val dump_unit(unit_t *dumping)
+	{
+		val o = val::object();
+
+		o.set("id", val(get_unit_id(dumping).raw_value));
+		o.set("typeId", val((int)dumping->unit_type->id));
+		DUMP_VAL(owner);
+		o.set("x", val(dumping->position.x));
+		o.set("y", val(dumping->position.y));
+		DUMP_VAL(hp);
+
+		DUMP_VAL(energy);
+		DUMP_VAL_AS(shields, shield_points);
+		o.set("spriteIndex", val(dumping->sprite->index));
+		DUMP_VAL_AS(statusFlags, status_flags);
+		o.set("direction", val(direction_index(dumping->heading)));
+
+		if (dumping->unit_type->flags & dumping->unit_type->flag_resource && dumping->status_flags & dumping->status_flag_completed)
+		{
+			o.set("resourceAmount", val(dumping->building.resource.resource_count));
+		}
+		else
+		{
+			DUMP_VAL_AS(remainingBuildtime, remaining_build_time);
+		}
+
+		if (dumping->current_build_unit)
+		{
+			int remainingTrainTime = ((float)dumping->current_build_unit->remaining_build_time / (float)dumping->current_build_unit->unit_type->build_time) * 255;
+			o.set("remainingTrainTime", val(remainingTrainTime));
+		}
+
+		DUMP_VAL_AS(kills, kill_count);
+		o.set("order", val((int)dumping->order_type->id));
+
+		{
+			int d = direction_index(dumping->heading);
+			d -= 64;
+			if (d < 0)
+				d += 256;
+			o.set("angle", (double)d * 3.14159265358979323846 / 128.0);
+		}
+
+		o.set("sprite", dump_sprite(dumping->sprite));
+		DUMP_VAL(subunit);
+		DUMP_VAL(order_state);
+		DUMP_VAL(ground_weapon_cooldown);
+		DUMP_VAL(air_weapon_cooldown);
+		DUMP_VAL(spell_cooldown);
+		o.set("order_target", dump_target(&dumping->order_target));
+		DUMP_VAL(unit_type);
+		DUMP_VAL(index);
+		DUMP_VAL(unit_id_generation);
+
+		//		prev
+		// DUMP_VAL(main_order_timer);
+		// DUMP_VAL(auto_target_unit);
+		// DUMP_VAL(connected_unit);
+		// DUMP_VAL(order_queue_count);
+		// DUMP_VAL(order_process_timer);
+		// DUMP_VAL(unknown_0x086);
+		// DUMP_VAL(attack_notify_timer);
+		DUMP_VAL(previous_unit_type);
+		// DUMP_VAL(last_event_timer);
+		// DUMP_VAL(last_event_color);
+		// DUMP_VAL(rank_increase);
+		DUMP_VAL(last_attacking_player);
+		// DUMP_VAL(secondary_order_timer);
+		// DUMP_VAL(user_action_flags);
+		// DUMP_VAL(cloak_counter);
+		DUMP_VAL(movement_state);
+		// DUMP_VAL(previous_hp);
+
+		val loaded = val::object();
+		for (int i = 0; i < dumping->loaded_units.size(); ++i)
+		{
+			loaded.set(i, dumping->loaded_units[i].raw_value);
+		}
+		o.set("loaded_units", loaded);
+		// o.set("_flingy_t", dump_flingy(dumping));
+		return o;
+	}
+
+#pragma pack(push, 1)
+	struct spriteFrameData
+	{
+		short int index;
+		short int id = -1;
+		char owner;
+		char elevation;
+		int flags;
+		short int x;
+		short int y;
+		char image_length = 0;
+		short int main_image_index = -1;
+	};
+
+	struct imageFrameData
+	{
+		short int index;
+		short int id;
+		int flags;
+		short int frame_index;
+		short int x;
+		short int y;
+		int modifier;
+		int modifier_data1;
+	};
+
+	struct unitFrameData
+	{
+		unsigned short int id;
+		short int typeId;
+		short int owner;
+		short int x;
+		short int y;
+		short int hp;
+		short int energy;
+		short int sprite_index = -1;
+		int status_flags;
+		short int direction;
+		short int remainingBuildTime;
+		short int shields;
+		unsigned char order;
+		unsigned char remainingTrainTime = 0;
+		short int kills;
+
+		//int ground_weapon_cooldown;
+		//int air_weapon_cooldown;
+		//int spell_cooldown;
+		//int rank_increase;
+		//int kill_count;
+		//build queue
+		//std::array<unit_id, 8> loaded_units;
+		//direction_t heading;
+		//fp8 hp
+	};
+
+	//unit_t* bullet_target;
+	//xy bullet_target_pos;
+
+#pragma pack(pop)
+
+	uint32_t sprite_depth_order(const sprite_t *sprite) const
+	{
+		uint32_t score = 0;
+		score |= sprite->elevation_level;
+		score <<= 13;
+		score |= sprite->elevation_level <= 4 ? sprite->position.y : 0;
+		score <<= 1;
+		score |= s_flag(sprite, sprite_t::flag_turret) ? 1 : 0;
+		return score;
+	}
+
+	auto sort_sprites()
+	{
+		a_vector<std::pair<uint32_t, const sprite_t *>> sorted_sprites;
 
 		sorted_sprites.clear();
 
-		
-		for (size_t i = 0; i != st.sprites_on_tile_line.size(); ++i) {
-			for (sprite_t* sprite : ptr(st.sprites_on_tile_line[i])) {
-				if (sprite != nullptr) {
-					if (s_hidden(sprite)) continue;
+		for (size_t i = 0; i != st.sprites_on_tile_line.size(); ++i)
+		{
+			for (sprite_t *sprite : ptr(st.sprites_on_tile_line[i]))
+			{
+				if (sprite != nullptr)
+				{
+					if (s_hidden(sprite))
+						continue;
 					sorted_sprites.emplace_back(sprite_depth_order(sprite), sprite);
 				}
 			}
@@ -538,17 +791,12 @@ struct util_functions : state_functions
 	{
 		val r = val::array();
 		size_t i = 0;
-		for (unit_t *u : ptr(st.visible_units))
+		for (int owner = 0; owner < 12; owner++)
 		{
-			r.set(i++, u);
-		}
-		for (unit_t *u : ptr(st.hidden_units))
-		{
-			r.set(i++, u);
-		}
-		for (unit_t *u : ptr(st.map_revealer_units))
-		{
-			r.set(i++, u);
+			for (unit_t *u : ptr(st.player_units[owner]))
+			{
+				r.set(i++, dump_unit(u));
+			}
 		}
 		return r;
 	}
@@ -681,20 +929,79 @@ struct util_functions : state_functions
 		return r;
 	}
 
-	auto count_units() {
+	// auto get_tiles_buffer() {
+	// 	char * buffer = (char*)malloc(st.tiles_buffer_size);
+	// 	char buffer[2* st.tiles.size()];
+
+	// 	 for (int i = 0; i < st.tiles.size(); ++i)
+	// 	{
+	// 		buffer[i*2] = st.tiles[i].explored;
+	// 		buffer[i*2+1] = st.tiles[i].visible;
+	// 	}
+	// 	return buffer;
+	// }
+	std::vector<unitFrameData> units;
+
+	auto get_units()
+	{
+		units.clear();
+		for (int owner = 0; owner < 12; owner++)
+		{
+			for (unit_t *u : ptr(st.player_units[owner]))
+			{
+				unitFrameData unitData;
+
+				unitData.id = get_unit_id(u).raw_value;
+				unitData.owner = u->owner;
+				unitData.typeId = (short int)u->unit_type->id;
+				unitData.hp = (short int)u->hp.integer_part();
+				unitData.energy = (short int)u->energy.integer_part();
+				unitData.shields = (short int)u->shield_points.integer_part();
+				unitData.sprite_index = u->sprite->index;
+				unitData.status_flags = u->status_flags;
+				unitData.x = u->position.x;
+				unitData.y = u->position.y;
+				unitData.direction = direction_index(u->heading);
+				unitData.remainingBuildTime = u->remaining_build_time;
+
+				if (u_completed(u) && ut_resource(u->unit_type))
+				{
+					unitData.remainingBuildTime = u->building.resource.resource_count;
+				}
+
+				unitData.order = (unsigned char)u->order_type->id;
+				if (u->current_build_unit)
+				{
+					unitData.remainingTrainTime = ((float)u->current_build_unit->remaining_build_time / (float)u->current_build_unit->unit_type->build_time) * 255;
+				}
+				unitData.kills = u->kill_count;
+
+				units.push_back(unitData);
+			}
+		}
+		return units;
+	}
+
+	auto count_units()
+	{
 		int unit_count = 0;
-		for (int owner = 0; owner < 12; owner++) {
-			for (unit_t* u : ptr(st.player_units[owner])) {
+		for (int owner = 0; owner < 12; owner++)
+		{
+			for (unit_t *u : ptr(st.player_units[owner]))
+			{
 				unit_count++;
 			}
 		}
 		return unit_count;
 	}
 
-	auto count_research() {
+	auto count_research()
+	{
 		int research_count = 0;
-		for (int owner = 0; owner < 12; owner++) {
-			for (unit_t* u : ptr(st.player_units[owner])) {
+		for (int owner = 0; owner < 12; owner++)
+		{
+			for (unit_t *u : ptr(st.player_units[owner]))
+			{
 				if (u->order_type->id == Orders::ResearchTech && u->building.researching_type)
 				{
 					research_count++;
@@ -704,10 +1011,13 @@ struct util_functions : state_functions
 		return research_count;
 	}
 
-	auto count_upgrades() {
+	auto count_upgrades()
+	{
 		int upgrade_count = 0;
-		for (int owner = 0; owner < 12; owner++) {
-			for (unit_t* u : ptr(st.player_units[owner])) {
+		for (int owner = 0; owner < 12; owner++)
+		{
+			for (unit_t *u : ptr(st.player_units[owner]))
+			{
 
 				if (u->order_type->id == Orders::Upgrade && u->building.upgrading_type)
 				{
@@ -718,31 +1028,39 @@ struct util_functions : state_functions
 		return upgrade_count;
 	}
 
-	auto count_images() {
+	auto count_images()
+	{
 		int image_count = 0;
-		for (auto& v : sort_sprites()) {
-			for (const image_t* image : ptr(v.second->images)) {
+		for (auto &v : sort_sprites())
+		{
+			for (const image_t *image : ptr(v.second->images))
+			{
 				image_count++;
 			}
 		}
 		return image_count;
 	}
 
-	auto count_building_queue() {
+	auto count_building_queue()
+	{
 		int build_queue_count = 0;
-			for (unit_t* u : ptr(st.visible_units)) {
-				if (u->build_queue.size() > 0) {
-					build_queue_count++;
-				}
+		for (unit_t *u : ptr(st.visible_units))
+		{
+			if (u->build_queue.size() > 0)
+			{
+				build_queue_count++;
+			}
 
-				// loaded units included in queue count
-				for (bwgame::unit_id uid : u->loaded_units) {
-					if (uid.raw_value != 0) {
-						build_queue_count++;
-						break;
-					}
+			// loaded units included in queue count
+			for (bwgame::unit_id uid : u->loaded_units)
+			{
+				if (uid.raw_value != 0)
+				{
+					build_queue_count++;
+					break;
 				}
 			}
+		}
 		return build_queue_count;
 	}
 };
@@ -779,165 +1097,16 @@ val dump_pos_fp8(xy_fp8 &pos)
 	return o;
 }
 
-class Dump
-{
-public:
-#define STR(a) #a
-#define DUMP_VAL(name) o.set(STR(name), to_emscripten(dumping->name))
-#define DUMP_POS(field) o.set(STR(field), dump_pos(dumping->field))
-
-	template <typename T>
-	static val to_emscripten(T &v)
-	{
-		return val(v);
-	}
-	static val to_emscripten(fp8 &v)
-	{
-		double as_double = v.raw_value;
-		as_double /= (1 << v.fractional_bits);
-		return val(as_double);
-	}
-	template <typename T>
-	static val to_emscripten(id_type_for<T> *v)
-	{
-		if (!v)
-		{
-			return val::null();
-		}
-		return val((int)v->id);
-	}
-
-	static val to_emscripten(unit_t *unit)
-	{
-		util_functions f(m->ui.st);
-		if (!unit)
-		{
-			return val::null();
-		}
-		return val(f.get_unit_id(unit).raw_value);
-	}
-
-	template <typename T>
-	static val dump_pos(T &pos)
-	{
-		val o = val::object();
-		o.set("x", to_emscripten(pos.x));
-		o.set("y", to_emscripten(pos.y));
-		return o;
-	}
-
-	static val dump_sprite(sprite_t *dumping)
-	{
-		val o = val::object();
-		DUMP_VAL(index);
-		DUMP_VAL(owner);
-		DUMP_VAL(selection_index);
-		DUMP_VAL(visibility_flags);
-		DUMP_VAL(elevation_level);
-		DUMP_VAL(flags);
-		DUMP_VAL(selection_timer);
-		DUMP_VAL(width);
-		DUMP_VAL(height);
-		DUMP_POS(position);
-		return o;
-	}
-
-	static val dump_thingy(thingy_t *dumping)
-	{
-		val o = val::object();
-		DUMP_VAL(hp);
-		o.set("sprite", dump_sprite(dumping->sprite));
-		return o;
-	}
-
-	static val dump_target(target_t *dumping)
-	{
-		val o = val::object();
-		DUMP_POS(pos);
-		DUMP_VAL(unit);
-		return o;
-	}
-
-	static val dump_flingy(flingy_t *dumping)
-	{
-		val o = val::object();
-		DUMP_VAL(index);
-		o.set("move_target", dump_target(&dumping->move_target));
-		DUMP_POS(next_movement_waypoint);
-		DUMP_POS(next_target_waypoint);
-		DUMP_VAL(movement_flags);
-		DUMP_POS(position);
-		DUMP_POS(exact_position);
-		DUMP_VAL(flingy_top_speed);
-		DUMP_VAL(current_speed);
-		DUMP_VAL(next_speed);
-		DUMP_POS(velocity);
-		DUMP_VAL(flingy_acceleration);
-		o.set("sprite", dump_sprite(dumping->sprite));
-		o.set("_thingy_t", dump_thingy(dumping));
-		return o;
-	}
-
-	static val dump_unit(unit_t *dumping)
-	{
-		val o = val::object();
-		DUMP_VAL(owner);
-		DUMP_VAL(order_state);
-		DUMP_VAL(main_order_timer);
-		DUMP_VAL(ground_weapon_cooldown);
-		DUMP_VAL(air_weapon_cooldown);
-		DUMP_VAL(spell_cooldown);
-		o.set("order_target", dump_target(&dumping->order_target));
-
-		DUMP_VAL(shield_points);
-		DUMP_VAL(unit_type);
-
-		DUMP_VAL(subunit);
-		DUMP_VAL(auto_target_unit);
-		DUMP_VAL(connected_unit);
-		DUMP_VAL(order_queue_count);
-		DUMP_VAL(order_process_timer);
-		DUMP_VAL(unknown_0x086);
-		DUMP_VAL(attack_notify_timer);
-		DUMP_VAL(previous_unit_type);
-		DUMP_VAL(last_event_timer);
-		DUMP_VAL(last_event_color);
-		DUMP_VAL(rank_increase);
-		DUMP_VAL(kill_count);
-		DUMP_VAL(last_attacking_player);
-		DUMP_VAL(secondary_order_timer);
-		DUMP_VAL(user_action_flags);
-		DUMP_VAL(cloak_counter);
-		DUMP_VAL(movement_state);
-		DUMP_VAL(energy);
-		DUMP_VAL(unit_id_generation);
-		DUMP_VAL(damage_overlay_state);
-		DUMP_VAL(hp_construction_rate);
-		DUMP_VAL(shield_construction_rate);
-		DUMP_VAL(remaining_build_time);
-		DUMP_VAL(previous_hp);
-
-		val loaded = val::object();
-		for (int i = 0; i < dumping->loaded_units.size(); ++i)
-		{
-			loaded.set(i, dumping->loaded_units[i].raw_value);
-		}
-		o.set("loaded_units", loaded);
-		o.set("_flingy_t", dump_flingy(dumping));
-		return o;
-	}
-};
-
-val lookup_unit_extended(int32_t index)
-{
-	util_functions f(m->ui.st);
-	unit_t *u = f.get_unit(unit_id(index));
-	if (!u)
-	{
-		return val::null();
-	}
-	return Dump::dump_unit(u);
-}
+// val lookup_unit_extended(int32_t index)
+// {
+// 	util_functions f(m->ui.st);
+// 	unit_t *u = f.get_unit(unit_id(index));
+// 	if (!u)
+// 	{
+// 		return val::null();
+// 	}
+// 	return Dump::dump_unit(u);
+// }
 
 util_functions &get_util_funcs()
 {
@@ -959,6 +1128,11 @@ const unit_type_t *unit_t_build_type(const unit_t *u)
 const sprite_t *thingy_t_sprite(const thingy_t *t)
 {
 	return t->sprite;
+}
+
+const int_fast32_t thingy_t_hp(const thingy_t *t)
+{
+	return t->hp.integer_part();
 }
 
 const image_t *sprite_t_main_image(const sprite_t *s)
@@ -1009,6 +1183,7 @@ EMSCRIPTEN_BINDINGS(openbw)
 	function("getExceptionMessage", &getExceptionMessage);
 
 	// function("lookup_unit_extended", &lookup_unit_extended);
+	// function("get_all_units", &util_functions::get_all_units);
 
 	class_<util_functions>("util_functions")
 		.function("worker_supply", &util_functions::worker_supply)
@@ -1055,8 +1230,8 @@ EMSCRIPTEN_BINDINGS(openbw)
 		.property("modifier_data1", &image_t::modifier_data1)
 		.property("modifier_data2", &image_t::modifier_data2)
 		.property("frozen_y_value", &image_t::frozen_y_value)
-		.function("image_type", &image_t_image_type, allow_raw_pointers())
-		.function("iscript_state", &image_t_iscript_state, allow_raw_pointers());
+		.function("image_type", &image_t_image_type, allow_raw_pointers());
+	// .function("iscript_state", &image_t_iscript_state, allow_raw_pointers());
 
 	class_<sprite_t, base<link_base>>("sprite_t")
 		.property("index", &sprite_t::index)
@@ -1072,12 +1247,17 @@ EMSCRIPTEN_BINDINGS(openbw)
 		.function("images", &sprite_t_images, allow_raw_pointers());
 
 	class_<thingy_t, base<link_base>>("thingy_t")
-		.property("hp", &flingy_t::hp)
+		.function("hp", &thingy_t_hp, allow_raw_pointers())
 		.function("sprite", &thingy_t_sprite, allow_raw_pointers());
+
+	class_<xy>("xy_t")
+		.property("x", &xy::x)
+		.property("y", &xy::y);
 
 	class_<flingy_t, base<thingy_t>>("flingy_t")
 		.property("index", &flingy_t::index)
-		.property("direction", &flingy_t::heading);
+		.property("direction", &flingy_t::heading)
+		.property("position", &flingy_t::position);
 
 	class_<bullet_t, base<flingy_t>>("bullet_t");
 
@@ -1087,14 +1267,11 @@ EMSCRIPTEN_BINDINGS(openbw)
 		.property("ground_weapon_cooldown", &unit_t::ground_weapon_cooldown)
 		.property("air_weapon_cooldown", &unit_t::air_weapon_cooldown)
 		.property("spell_cooldown", &unit_t::spell_cooldown)
-		.property("rank_increase", &unit_t::rank_increase)
 		.property("kill_count", &unit_t::kill_count)
 		.property("cloak_counter", &unit_t::cloak_counter)
 		.property("damage_overlay_state", &unit_t::damage_overlay_state)
 		.property("status_flags", &unit_t::status_flags)
 		.property("remaining_build_time", &unit_t::remaining_build_time)
-		.property("carrying_flags", &unit_t::carrying_flags)
-		.property("wireframe_randomizer", &unit_t::wireframe_randomizer)
 		.property("secondary_order_state", &unit_t::secondary_order_state)
 		.function("unit_type", &unit_t_unit_type, allow_raw_pointers())
 		.function("build_type", &unit_t_build_type, allow_raw_pointers());
@@ -1108,10 +1285,28 @@ EMSCRIPTEN_BINDINGS(openbw)
 	// loaded_units
 }
 
-
 // return m->ui.st.players.at(player).controller == player_t::controller_occupied ? 1 : 0;
 // 	case 14:
 // 		return (double)m->ui.apm.at(player).current_apm;
+
+extern "C" char *get_buffer(int index)
+{
+	switch (index)
+	{
+	case 0: //tiles + creep (t->flags & tile_t::flag_has_creep);
+		return reinterpret_cast<char *>(&m->ui.st.tiles.data()[0]);
+	case 1: //
+		return reinterpret_cast<char *>(&util_functions(m->ui.st).get_units().data()[0]);
+	case 2: //
+	case 3: //
+	case 4: //
+	case 5: //
+	case 6: //
+	case 7: //
+	case 8: //
+		return reinterpret_cast<char *>(&m->ui.played_sounds.data()[0]);
+	}
+}
 
 extern "C" int counts(int player, int index)
 {
@@ -1133,8 +1328,8 @@ extern "C" int counts(int player, int index)
 	case 5: // image count
 		return util_functions(m->ui.st).count_images();
 	case 6: // sound count
-		return m->ui.played_sounds.size();
-	case 7: // building queue count	
+		return (int)m->ui.played_sounds.size();
+	case 7: // building queue count
 		return util_functions(m->ui.st).count_building_queue();
 	case 8:
 		return m->ui.st.current_minerals.at(player);
@@ -1150,12 +1345,12 @@ extern "C" int counts(int player, int index)
 	// 	return m->ui.st.supply_used.at(player)[2].raw_value / 2.0;
 	case 11:
 		return 0; // @todo implement
-	// case 11:
-	// 	return std::min(m->ui.st.supply_available.at(player)[0].raw_value / 2.0, 200.0);
-	// case 11:
-	// 	return std::min(m->ui.st.supply_available.at(player)[1].raw_value / 2.0, 200.0);
-	// case 11:
-	// 	return std::min(m->ui.st.supply_available.at(player)[2].raw_value / 2.0, 200.0);
+		// case 11:
+		// 	return std::min(m->ui.st.supply_available.at(player)[0].raw_value / 2.0, 200.0);
+		// case 11:
+		// 	return std::min(m->ui.st.supply_available.at(player)[1].raw_value / 2.0, 200.0);
+		// case 11:
+		// 	return std::min(m->ui.st.supply_available.at(player)[2].raw_value / 2.0, 200.0);
 
 	case 12:
 		return util_functions(m->ui.st).worker_supply(player);
@@ -1168,29 +1363,31 @@ extern "C" int counts(int player, int index)
 
 bool any_replay_loaded = false;
 
-
-// @todo add next_frame_exact
-extern "C" void next_frame_exact()
+extern "C" int next_frame_exact()
 {
-	m->ui.replay_functions::next_frame();
+	//@todo clear states
+	m->ui.next_frame();
 
-	#ifdef __EMSCRIPTEN_PTHREADS__
-		MAIN_THREAD_ASYNC_EM_ASM({ js_post_main_loop(); });
-	#else
-		EM_ASM({ js_post_main_loop(); });
-	#endif
+#ifdef __EMSCRIPTEN_PTHREADS__
+	MAIN_THREAD_ASYNC_EM_ASM({ js_post_main_loop(); });
+#else
+	EM_ASM({ js_post_main_loop(); });
+#endif
+
+	return m->ui.st.current_frame;
 }
 
-// @todo add next_frame_exact
-extern "C" void next_frame()
+extern "C" int next_frame()
 {
 	m->update();
 
-	#ifdef __EMSCRIPTEN_PTHREADS__
-		MAIN_THREAD_ASYNC_EM_ASM({ js_post_main_loop(); });
-	#else
-		EM_ASM({ js_post_main_loop(); });
-	#endif
+#ifdef __EMSCRIPTEN_PTHREADS__
+	MAIN_THREAD_ASYNC_EM_ASM({ js_post_main_loop(); });
+#else
+	EM_ASM({ js_post_main_loop(); });
+#endif
+
+	return m->ui.st.current_frame;
 }
 
 extern "C" void load_replay(const uint8_t *data, size_t len)
@@ -1209,11 +1406,6 @@ int main()
 	std::chrono::high_resolution_clock clock;
 	auto start = clock.now();
 
-	// data_loading::data_files_loader
-	// data_loading::mpq_file
-	// data_loading::js_file_reader
-
-	// auto load_data_file = data_loading::data_files_directory<data_loading::data_files_loader<data_loading::mpq_file<data_loading::js_file_reader<>>>>("");
 	auto load_data_file = data_loading::simple_reader<data_loading::js_file_reader<>>();
 	log("files loaded\n");
 
@@ -1226,34 +1418,35 @@ int main()
 	::m = &m;
 	::g_m = &m;
 
-	#ifdef __EMSCRIPTEN_PTHREADS__
-		MAIN_THREAD_EM_ASM({js_load_done();});
-	#else
-		EM_ASM({js_load_done();});
-	#endif
+#ifdef __EMSCRIPTEN_PTHREADS__
+	MAIN_THREAD_EM_ASM({ js_load_done(); });
+#else
+	EM_ASM({ js_load_done(); });
+#endif
 
 	emscripten_exit_with_live_runtime();
+	// resume_replay();
+
 	// emscripten_set_main_loop_arg([](void *ptr)
-	// 							 {
-	// 								 if (!any_replay_loaded)
-	// 									 return;
-										 
-	// 								 #ifdef __EMSCRIPTEN_PTHREADS__
-	// 								 	MAIN_THREAD_ASYNC_EM_ASM({ js_pre_main_loop(); });
-	// 								#else
-	// 								 	EM_ASM({ js_pre_main_loop(); });
-	// 								#endif
+	// 								 {
+	// 									 if (!any_replay_loaded)
+	// 										 return;
 
-	// 								 ((main_t *)ptr)->update();
+	// 									 #ifdef __EMSCRIPTEN_PTHREADS__
+	// 									 	MAIN_THREAD_ASYNC_EM_ASM({ js_pre_main_loop(); });
+	// 									#else
+	// 									 	EM_ASM({ js_pre_main_loop(); });
+	// 									#endif
 
-	// 								 #ifdef __EMSCRIPTEN_PTHREADS__
-	// 								 	MAIN_THREAD_ASYNC_EM_ASM({ js_post_main_loop(); });
-	// 								#else
-	// 								 	EM_ASM({ js_post_main_loop(); });
-	// 								#endif
-	// 							 },
-	// 							 &m, 0, 1);
+	// 									 ((main_t *)ptr)->update();
 
+	// 									 #ifdef __EMSCRIPTEN_PTHREADS__
+	// 									 	MAIN_THREAD_ASYNC_EM_ASM({ js_post_main_loop(); });
+	// 									#else
+	// 									 	EM_ASM({ js_post_main_loop(); });
+	// 									#endif
+	// 								 },
+	// 								 &m, 0, 1);
 	::g_m = nullptr;
 
 	return 0;

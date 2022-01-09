@@ -266,7 +266,7 @@ function setupCallbacks() {
 const js_pre_main_loop = () => {};
 
 const js_post_main_loop = () => {
-  console.log(`frame: ${openBw._replay_get_value(2)}`);
+  window.log();
 };
 
 const js_read_data = (index, dst, offset, size) => {
@@ -412,9 +412,15 @@ function callMain() {
   }
 }
 
+function loop() {
+  openBw._next_frame();
+  requestAnimationFrame(loop)
+}
+
 function start_replay(buffer, length) {
   openBw._load_replay(buffer, length);
   console.log("replay loaded");
+  requestAnimationFrame(loop)
 }
 
 function files_to_uint8array_buffers() {
@@ -443,21 +449,55 @@ function files_to_uint8array_buffers() {
   });
 }
 
-window.next = () => {
-  openBw._next_frame();
-  console.log("tiles", openBw._counts(0, 0));
-  console.log("units", openBw._counts(0, 1));
-  console.log("upgrades", openBw._counts(0, 2));
-  console.log("research", openBw._counts(0, 3));
-  console.log("sprite", openBw._counts(0, 4));
-  console.log("image", openBw._counts(0, 5));
-  console.log("sound", openBw._counts(0, 6));
-  console.log("building queue", openBw._counts(0, 7));
-  for (let i = 0; i < 8; ++i) {
-    console.log("minerals", openBw._counts(i, 8));
-    console.log("gas", openBw._counts(i, 9));
-    console.log("workers", openBw._counts(i, 12));
-    console.log("army", openBw._counts(i, 13));
-  }
+window.log = () => {
+  // console.log(`frame: ${openBw._replay_get_value(2)}`);
+  // console.log("units", openBw._counts(0, 1));
+  // console.log("upgrades", openBw._counts(0, 2));
+  // console.log("research", openBw._counts(0, 3));
+  // console.log("sprite", openBw._counts(0, 4));
+  // console.log("image", openBw._counts(0, 5));
+  // console.log("sound", sounds);
+  // console.log("building queue", openBw._counts(0, 7));
+  // for (let i = 0; i < 8; ++i) {
+  //   console.log("minerals", openBw._counts(i, 8));
+  //   console.log("gas", openBw._counts(i, 9));
+  //   console.log("workers", openBw._counts(i, 12));
+  //   console.log("army", openBw._counts(i, 13));
+  // }
+  // const ptr = openBw._get_buffer(0)
+  // const explored = openBw.HEAPU8[ptr];
+  // const visible = openBw.HEAPU8[ptr+ 1];
+  // const flags = openBw.HEAPU16[ptr + 1];
+
+  // const explored2 = openBw.HEAPU8[ptr + 100 * 4];
+  // const visible2 = openBw.HEAPU8[ptr+ 100 * 4 + 1];
+  // const flags2 = openBw.HEAPU16[ptr + 100 * 2 + 1];
+
+  // debugger;
+  // const ptr = openBw._get_buffer(1);
+  // console.log("unit_id", openBw.HEAPU16[ptr]);
+  // console.log("type_id", openBw.HEAP16[ptr+1]);
+  // console.log("owner", openBw.HEAP16[ptr+2]);
+  // console.log("x", openBw.HEAP16[ptr+3]);
+  // console.log("y", openBw.HEAP16[ptr+4]);
+  // console.log("hp", openBw.HEAP16[ptr+5]);
+  // console.log("sounds", sounds);
+
   
+  // unsigned short int id;
+	// short int typeId;
+	// short int owner;
+	// short int x;
+	// short int y;
+	// short int hp;
+	// short int energy;
+	// short int sprite_index = -1;
+	// int status_flags;
+	// short int direction;
+	// short int remainingBuildTime;
+	// short int shields; 
+	// unsigned char order;
+	// unsigned char remainingTrainTime = 0;
+	// short int kills;
+
 }
