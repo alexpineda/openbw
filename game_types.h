@@ -60,6 +60,7 @@ namespace bwgame
 		a_deque<std::array<T, allocation_granularity>> list;
 		intrusive_list<T, default_link_f> free_list;
 		size_t size = 0;
+		uint32_t titan_index_counter;
 
 		T *get(size_t index, bool add_new_to_free = true)
 		{
@@ -132,6 +133,7 @@ namespace bwgame
 		}
 		void pop()
 		{
+			titan_index_counter++;
 			free_list.pop_front();
 		}
 		void push(T *obj)
@@ -463,6 +465,7 @@ namespace bwgame
 	struct link_base
 	{
 		std::pair<link_base *, link_base *> link;
+		uint32_t titan_index;
 	};
 
 	struct iscript_state_t
@@ -530,6 +533,8 @@ namespace bwgame
 		xy position;
 		image_t *main_image;
 		intrusive_list<image_t, default_link_f> images;
+
+		uint32_t titan_index;
 	};
 
 	struct thingy_t : link_base

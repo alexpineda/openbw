@@ -491,10 +491,26 @@ struct util_functions : state_functions
 		return o;
 	}
 
+	val dump_image(image_t *dumping)
+	{
+		val o = val::object();
+		DUMP_VAL(index);
+		DUMP_VAL_AS(titanIndex, titan_index);
+		o.set("typeId", val((int)dumping->image_type->id));
+		DUMP_VAL(flags);
+		DUMP_POS(offset);
+		DUMP_VAL(modifier);
+		DUMP_VAL_AS(modifierData1, modifier_data1);
+		DUMP_VAL_AS(frameIndex, frame_index);
+		return o;
+	}
+
 	val dump_sprite(sprite_t *dumping)
 	{
 		val o = val::object();
 		DUMP_VAL(index);
+		DUMP_VAL_AS(titanIndex, titan_index);
+		o.set("typeId", val((int)dumping->sprite_type->id));
 		DUMP_VAL(owner);
 		DUMP_VAL(selection_index);
 		DUMP_VAL(visibility_flags);
@@ -503,7 +519,17 @@ struct util_functions : state_functions
 		DUMP_VAL(selection_timer);
 		DUMP_VAL(width);
 		DUMP_VAL(height);
+		o.set("mainImageTitanIndex", val(dumping->main_image->titan_index));
 		DUMP_POS(position);
+
+		val r = val::array();
+		size_t i = 0;
+		for (auto image : ptr(dumping->images))
+		{
+			r.set(i++, dump_image(image));
+		}
+		o.set("images", r);
+
 		return o;
 	}
 
@@ -556,7 +582,7 @@ struct util_functions : state_functions
 
 		DUMP_VAL(energy);
 		DUMP_VAL_AS(shields, shield_points);
-		o.set("spriteIndex", val(dumping->sprite->index));
+		o.set("spriteTitanIndex", val(dumping->sprite->titan_index));
 		DUMP_VAL_AS(statusFlags, status_flags);
 		o.set("direction", val(direction_index(dumping->heading)));
 
@@ -586,16 +612,26 @@ struct util_functions : state_functions
 			o.set("angle", (double)d * 3.14159265358979323846 / 128.0);
 		}
 
-		o.set("sprite", dump_sprite(dumping->sprite));
 		DUMP_VAL(subunit);
 		DUMP_VAL(order_state);
+
+		// for battle visualizations
 		DUMP_VAL(ground_weapon_cooldown);
 		DUMP_VAL(air_weapon_cooldown);
 		DUMP_VAL(spell_cooldown);
+
+		// might need this for bullets?
 		o.set("order_target", dump_target(&dumping->order_target));
-		DUMP_VAL(unit_type);
+
+		// for debugging unit tags
 		DUMP_VAL(index);
 		DUMP_VAL(unit_id_generation);
+
+
+		// maybe?
+		// DUMP_VAL(previous_unit_type);
+		// DUMP_VAL(movement_state);
+		// DUMP_VAL(last_attacking_player);
 
 		//		prev
 		// DUMP_VAL(main_order_timer);
@@ -605,15 +641,12 @@ struct util_functions : state_functions
 		// DUMP_VAL(order_process_timer);
 		// DUMP_VAL(unknown_0x086);
 		// DUMP_VAL(attack_notify_timer);
-		DUMP_VAL(previous_unit_type);
 		// DUMP_VAL(last_event_timer);
 		// DUMP_VAL(last_event_color);
 		// DUMP_VAL(rank_increase);
-		DUMP_VAL(last_attacking_player);
 		// DUMP_VAL(secondary_order_timer);
 		// DUMP_VAL(user_action_flags);
 		// DUMP_VAL(cloak_counter);
-		DUMP_VAL(movement_state);
 		// DUMP_VAL(previous_hp);
 
 		val loaded = val::object();
@@ -816,10 +849,13 @@ struct util_functions : state_functions
 	{
 		val r = val::array();
 		size_t i = 0;
-		for (sprite_t *u : ptr(st.sprites_container.free_list))
+
+		auto sprites = sort_sprites();
+		for (auto & sprite: sprites)
 		{
-			r.set(i++, u);
+			r.set(i++, dump_sprite((sprite_t*)sprite.second));
 		}
+		
 		return r;
 	}
 
