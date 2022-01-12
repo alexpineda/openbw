@@ -48,7 +48,7 @@ namespace bwgame
 		}
 	};
 
-	struct played_sound
+	struct played_sound_t
 	{
 		int32_t id;
 		int32_t x;
@@ -62,7 +62,7 @@ namespace bwgame
 		replay_state current_replay_state;
 		action_state current_action_state;
 		std::array<apm_t, 12> apm;
-		std::vector<played_sound> played_sounds;
+		std::vector<played_sound_t> played_sounds;
 
 		titan_replay_functions(game_player player) : replay_functions(player.st(), current_action_state, current_replay_state), player(std::move(player))
 		{
@@ -70,7 +70,7 @@ namespace bwgame
 
 		virtual void play_sound(int id, xy position, const unit_t *source_unit, bool add_race_index) override
 		{
-			played_sound ps = played_sound();
+			played_sound_t ps;
 			ps.id = add_race_index ? id + 1 : id;
 			ps.x = position.x;
 			ps.y = position.y;

@@ -569,11 +569,23 @@ struct util_functions : state_functions
 		return o;
 	}
 
+	val dump_sound(played_sound_t *dumping)
+	{
+		val o = val::object();
+		DUMP_VAL_AS(typeId, id);
+		DUMP_VAL(x);
+		DUMP_VAL(y);
+		DUMP_VAL_AS(unitTypeId, unit_type_id);
+		return o;
+	}
+
 	val dump_unit(unit_t *dumping)
 	{
 		val o = val::object();
 
-		o.set("id", val(get_unit_id(dumping).raw_value));
+		auto unit_id = get_unit_id(dumping).raw_value;
+
+		o.set("id", val(unit_id));
 		o.set("typeId", val((int)dumping->unit_type->id));
 		DUMP_VAL(owner);
 		o.set("x", val(dumping->position.x));
@@ -782,7 +794,7 @@ struct util_functions : state_functions
 		return r;
 	}
 
-	auto get_all_incomplete_units()
+	auto get_incomplete_units()
 	{
 		val r = val::array();
 		size_t i = 0;
@@ -801,7 +813,7 @@ struct util_functions : state_functions
 		return r;
 	}
 
-	auto get_all_completed_units()
+	auto get_completed_units()
 	{
 		val r = val::array();
 		size_t i = 0;
@@ -820,7 +832,7 @@ struct util_functions : state_functions
 		return r;
 	}
 
-	auto get_all_units()
+	auto get_units()
 	{
 		val r = val::array();
 		size_t i = 0;
@@ -834,7 +846,18 @@ struct util_functions : state_functions
 		return r;
 	}
 
-	auto get_all_active_thingies()
+	auto get_sounds()
+	{
+		val r = val::array();
+		size_t i = 0;
+		for (auto sound : ptr(m->ui.played_sounds))
+		{
+			r.set(i++, dump_sound(sound));
+		}
+		return r;
+	}
+
+	auto get_thingies()
 	{
 		val r = val::array();
 		size_t i = 0;
@@ -845,7 +868,7 @@ struct util_functions : state_functions
 		return r;
 	}
 
-	auto get_all_sprites()
+	auto get_sprites()
 	{
 		val r = val::array();
 		size_t i = 0;
@@ -859,7 +882,7 @@ struct util_functions : state_functions
 		return r;
 	}
 
-	auto get_all_images()
+	auto get_images()
 	{
 		val r = val::array();
 		size_t i = 0;
@@ -870,7 +893,7 @@ struct util_functions : state_functions
 		return r;
 	}
 
-	auto get_all_active_bullets()
+	auto get_bullets()
 	{
 		val r = val::array();
 		size_t i = 0;
@@ -976,47 +999,47 @@ struct util_functions : state_functions
 	// 	}
 	// 	return buffer;
 	// }
-	std::vector<unitFrameData> units;
+	// std::vector<unitFrameData> units;
 
-	auto get_units()
-	{
-		units.clear();
-		for (int owner = 0; owner < 12; owner++)
-		{
-			for (unit_t *u : ptr(st.player_units[owner]))
-			{
-				unitFrameData unitData;
+	// auto get_units()
+	// {
+	// 	units.clear();
+	// 	for (int owner = 0; owner < 12; owner++)
+	// 	{
+	// 		for (unit_t *u : ptr(st.player_units[owner]))
+	// 		{
+	// 			unitFrameData unitData;
 
-				unitData.id = get_unit_id(u).raw_value;
-				unitData.owner = u->owner;
-				unitData.typeId = (short int)u->unit_type->id;
-				unitData.hp = (short int)u->hp.integer_part();
-				unitData.energy = (short int)u->energy.integer_part();
-				unitData.shields = (short int)u->shield_points.integer_part();
-				unitData.sprite_index = u->sprite->index;
-				unitData.status_flags = u->status_flags;
-				unitData.x = u->position.x;
-				unitData.y = u->position.y;
-				unitData.direction = direction_index(u->heading);
-				unitData.remainingBuildTime = u->remaining_build_time;
+	// 			unitData.id = get_unit_id(u).raw_value;
+	// 			unitData.owner = u->owner;
+	// 			unitData.typeId = (short int)u->unit_type->id;
+	// 			unitData.hp = (short int)u->hp.integer_part();
+	// 			unitData.energy = (short int)u->energy.integer_part();
+	// 			unitData.shields = (short int)u->shield_points.integer_part();
+	// 			unitData.sprite_index = u->sprite->index;
+	// 			unitData.status_flags = u->status_flags;
+	// 			unitData.x = u->position.x;
+	// 			unitData.y = u->position.y;
+	// 			unitData.direction = direction_index(u->heading);
+	// 			unitData.remainingBuildTime = u->remaining_build_time;
 
-				if (u_completed(u) && ut_resource(u->unit_type))
-				{
-					unitData.remainingBuildTime = u->building.resource.resource_count;
-				}
+	// 			if (u_completed(u) && ut_resource(u->unit_type))
+	// 			{
+	// 				unitData.remainingBuildTime = u->building.resource.resource_count;
+	// 			}
 
-				unitData.order = (unsigned char)u->order_type->id;
-				if (u->current_build_unit)
-				{
-					unitData.remainingTrainTime = ((float)u->current_build_unit->remaining_build_time / (float)u->current_build_unit->unit_type->build_time) * 255;
-				}
-				unitData.kills = u->kill_count;
+	// 			unitData.order = (unsigned char)u->order_type->id;
+	// 			if (u->current_build_unit)
+	// 			{
+	// 				unitData.remainingTrainTime = ((float)u->current_build_unit->remaining_build_time / (float)u->current_build_unit->unit_type->build_time) * 255;
+	// 			}
+	// 			unitData.kills = u->kill_count;
 
-				units.push_back(unitData);
-			}
-		}
-		return units;
-	}
+	// 			units.push_back(unitData);
+	// 		}
+	// 	}
+	// 	return units;
+	// }
 
 	auto count_units()
 	{
@@ -1219,22 +1242,25 @@ EMSCRIPTEN_BINDINGS(openbw)
 	function("getExceptionMessage", &getExceptionMessage);
 
 	// function("lookup_unit_extended", &lookup_unit_extended);
-	// function("get_all_units", &util_functions::get_all_units);
+	// function("get_units", &util_functions::get_units);
 
 	class_<util_functions>("util_functions")
 		.function("worker_supply", &util_functions::worker_supply)
 		.function("army_supply", &util_functions::army_supply)
-		.function("get_all_incomplete_units", &util_functions::get_all_incomplete_units, allow_raw_pointers())
-		.function("get_all_completed_units", &util_functions::get_all_completed_units, allow_raw_pointers())
-		.function("get_all_units", &util_functions::get_all_units, allow_raw_pointers())
+		.function("get_incomplete_units", &util_functions::get_incomplete_units, allow_raw_pointers())
+		.function("get_completed_units", &util_functions::get_completed_units, allow_raw_pointers())
+		.function("get_units", &util_functions::get_units, allow_raw_pointers())
 		.function("get_completed_upgrades", &util_functions::get_completed_upgrades)
 		.function("get_completed_research", &util_functions::get_completed_research)
 		.function("get_incomplete_upgrades", &util_functions::get_incomplete_upgrades)
 		.function("get_incomplete_research", &util_functions::get_incomplete_research)
-		.function("get_all_active_thingies", &util_functions::get_all_active_thingies, allow_raw_pointers())
-		.function("get_all_sprites", &util_functions::get_all_sprites)
-		.function("get_all_images", &util_functions::get_all_images)
-		.function("get_all_active_bullets", &util_functions::get_all_active_bullets, allow_raw_pointers());
+		.function("get_thingies", &util_functions::get_thingies, allow_raw_pointers())
+		.function("get_sprites", &util_functions::get_sprites)
+		.function("get_images", &util_functions::get_images)
+		.function("get_bullets", &util_functions::get_bullets, allow_raw_pointers())
+		.function("get_sounds", &util_functions::get_sounds);
+
+		
 
 	function("get_util_funcs", &get_util_funcs);
 
@@ -1331,8 +1357,6 @@ extern "C" char *get_buffer(int index)
 	{
 	case 0: //tiles + creep (t->flags & tile_t::flag_has_creep);
 		return reinterpret_cast<char *>(&m->ui.st.tiles.data()[0]);
-	case 1: //
-		return reinterpret_cast<char *>(&util_functions(m->ui.st).get_units().data()[0]);
 	case 2: //
 	case 3: //
 	case 4: //

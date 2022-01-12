@@ -1842,7 +1842,9 @@ namespace bwgame
 
 					if (u->tr_minimap_attack_blink == 0 && (u->air_weapon_cooldown || u->ground_weapon_cooldown))
 					{
-						u->tr_minimap_attack_blink = 0b111000111000111000111;
+						if(u->order_target.unit){
+							u->order_target.unit->tr_minimap_attack_blink = 0b111000111000111000111;
+						}
 					}
 					if (u->tr_minimap_attack_blink & 1)
 					{

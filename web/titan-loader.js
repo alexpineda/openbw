@@ -456,6 +456,10 @@ window.log = () => {
   // console.log("research", openBw._counts(0, 3));
   // console.log("sprite", openBw._counts(0, 4));
   // console.log("image", openBw._counts(0, 5));
+  const sounds = openBw._counts(0, 6);
+  if (sounds) {
+    console.log(openBw.get_util_funcs().get_sounds());
+  }
   // console.log("sound", sounds);
   // console.log("building queue", openBw._counts(0, 7));
   // for (let i = 0; i < 8; ++i) {
