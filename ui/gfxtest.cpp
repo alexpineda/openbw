@@ -1227,10 +1227,8 @@ int main()
 	ui.init();
 
 #ifndef EMSCRIPTEN
-	//ui.load_replay_file("C:\\Users\\alexp\\Downloads\\25555-Star_kras-PvT.rep");
-	//ui.load_replay_file("D:\\dev\\titan-reactor\\packages\\downgrade-replay\\test\\out.116.rep");
-	//ui.load_replay_file("C:\\Users\\alexp\\Downloads\\bonyth\\broken\\gol-000720,(3)Whiteout1.2.rep");
-	ui.load_replay_file("C:\\Users\\alexp\\Downloads\\gol-25555-Star_kras-PvT.rep");
+	ui.load_replay_file("C:\\Users\\alexp\\Downloads\\25555-Star_kras-PvT.rep");
+	//ui.load_replay_file("C:\\Users\\alexp\\Downloads\\gol-25555-Star_kras-PvT.rep");
 	//ui.load_replay_file("C:\\Users\\alexp\\Downloads\\gol-test.rep");
 	//gol - ctq0uQBIaxiMnxvOogSC6CAzy3R1WXnzZ7 - uDDVL0sI.rep
 

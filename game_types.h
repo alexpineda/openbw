@@ -36,7 +36,7 @@ namespace bwgame
 	};
 
 	template<typename T>
-	size_t unit_id_t<T>::unit_generation_size = 0;
+	size_t unit_id_t<T>::unit_generation_size = 5;
 
 	using unit_id = unit_id_t<uint16_t>;
 	using unit_id_32 = unit_id_t<uint32_t>;
@@ -67,6 +67,16 @@ namespace bwgame
 		size_t size = 0;
 		size_t max_size = init_max_size;
 		uint32_t titan_index_counter;
+
+		object_container() {
+			if (max_size == 1700 || max_size == 3400) {
+				printf("unit_container %u", max_size);
+			}
+		}
+
+		object_container(size_t _max_size) {
+			max_size = _max_size;
+		}
 
 		void reset(size_t new_max_size = init_max_size)
 		{

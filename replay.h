@@ -108,20 +108,27 @@ struct replay_functions: action_functions {
 		auto r = data_loading::data_reader_le(data, data + data_size);
 		load_replay(data_loading::make_replay_file_reader(r), initial_processing, get_map_data);
 	}
+
+	const uint32_t MAGIC_CLASSIC = 0x53526572;
+	const uint32_t MAGIC_SCR = 0x53526573;
+	const uint32_t MAGIC_TR = 0x53526577;
+
 	template<typename reader_T>
 	void load_replay(reader_T&& r, bool initial_processing = true, std::vector<uint8_t>* get_map_data = nullptr) {
 		
 		uint32_t identifier = r.template get<uint32_t>();
-		if (identifier != 0x53526577) {
+		if (identifier != MAGIC_CLASSIC && identifier != MAGIC_TR) {
 			error("load_replay: invalid identifier %#x", identifier);
 		}
 
-		// uint32_t scr_section = r.template get_raw<uint32_t>();
-		uint32_t scr_section = r.template get<uint32_t>();
-		// uint32_t container_size = r.template get_raw<uint32_t>();
-		uint32_t container_size = r.template get<uint32_t>();
-		st.units_container.reset(container_size);
-		unit_id::unit_generation_size = container_size == 1700 ? 5 : 3;
+		if (identifier == MAGIC_TR) {
+			// uint32_t scr_section = r.template get_raw<uint32_t>();
+			uint32_t scr_section = r.template get<uint32_t>();
+			// uint32_t container_size = r.template get_raw<uint32_t>();
+			uint32_t container_size = r.template get<uint32_t>();
+			st.units_container = container_size;
+			unit_id::unit_generation_size = container_size == 1700 ? 5 : 3;
+		}
 
 		std::array<uint8_t, 633> game_info_buffer;
 		r.get_bytes(game_info_buffer.data(), game_info_buffer.size());

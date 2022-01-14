@@ -461,7 +461,7 @@ window.log = () => {
   // console.log("units", openBw._counts(0, 1));
   const units = openBw._counts(0, 1);
   if (units != lastUnits) {
-    console.log("units", units);
+    console.log("units", openBw.get_util_funcs().get_units());
     lastUnits = units;
   }
   // console.log("upgrades", openBw._counts(0, 2));

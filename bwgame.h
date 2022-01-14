@@ -296,7 +296,7 @@ struct state_base_non_copyable {
 	intrusive_list<unit_t, void, &unit_t::cloaked_unit_link> cloaked_units;
 	intrusive_list<unit_t, psionic_matrix_link_f> psionic_matrix_units;
 
-	object_container<unit_t, 3400, 17> units_container;
+	object_container<unit_t, 1700, 17> units_container;
 
 	intrusive_list<bullet_t, default_link_f> active_bullets;
 	object_container<bullet_t, 100, 10> bullets_container;
@@ -19704,6 +19704,7 @@ struct state_copier {
 
 	void operator()() {
 		(state_base_copyable&)r = (state_base_copyable&)st;
+		r.units_container = st.units_container.max_size;
 
 		assemble(r.free_thingies, st.free_thingies, &state_copier::thingy);
 		assemble(r.active_thingies, st.active_thingies, &state_copier::thingy);
@@ -19728,8 +19729,7 @@ struct state_copier {
 		for (size_t i = 0; i != 12; ++i) {
 			assemble(r.player_units[i], st.player_units[i], &state_copier::unit);
 		}
-
-		r.units_container.reset(st.units_container.max_size);
+		
 		assemble(r.units_container.free_list, st.units_container.free_list, &state_copier::unit);
 		assemble(r.dead_units, st.dead_units, &state_copier::unit);
 		assemble(r.map_revealer_units, st.map_revealer_units, &state_copier::unit);
@@ -19946,7 +19946,8 @@ struct game_load_functions : state_functions {
 		st.dead_units.clear();
 		for (auto& v : st.player_units) v.clear();
 
-		st.units_container = {};
+		// yes this brittle af code :(
+		st.units_container = st.units_container.max_size;
 
 		st.active_bullets_size = 0;
 		st.active_bullets.clear();
