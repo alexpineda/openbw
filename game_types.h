@@ -16,6 +16,8 @@ namespace bwgame
 	struct unit_id_t
 	{
 		T raw_value = 0;
+        static size_t unit_generation_size;
+
 		unit_id_t() = default;
 		explicit unit_id_t(T raw_value) : raw_value(raw_value) {}
 		explicit unit_id_t(size_t index, unsigned int generation) : raw_value((T)(index | generation << 13)) {}
@@ -25,13 +27,16 @@ namespace bwgame
 		}
 		size_t index() const
 		{
-			return raw_value & 0x1fff;
+			return raw_value & (0xffff >> unit_generation_size);
 		}
 		unsigned int generation() const
 		{
-			return raw_value >> 13;
+			return raw_value >> (16 - unit_generation_size);
 		}
 	};
+
+	template<typename T>
+	size_t unit_id_t<T>::unit_generation_size = 0;
 
 	using unit_id = unit_id_t<uint16_t>;
 	using unit_id_32 = unit_id_t<uint32_t>;
@@ -63,12 +68,12 @@ namespace bwgame
 		size_t max_size = init_max_size;
 		uint32_t titan_index_counter;
 
-		void reset()
+		void reset(size_t new_max_size = init_max_size)
 		{
 			list.clear();
 			free_list.clear();
 			size = 0;
-			max_size = init_max_size;
+			max_size = new_max_size;
 			titan_index_counter = 0;
 		}
 

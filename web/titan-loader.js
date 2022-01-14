@@ -2,6 +2,7 @@ import createOpenBw from "./titan.js";
 import "./downgrade.js";
 import _files from "./list.js";
 
+window.sidegrade = sidegrade;
 console.log("empty", _files.some(f => f.trim() === ""));
 let openBw;
 
@@ -189,16 +190,20 @@ function load_replay_file(files, download) {
       var og = new Int8Array(e.target.result);
       const srep = await sidegrade.parseReplay(og);
       const chkDowngrader = new sidegrade.ChkDowngrader();
-      const arr = await sidegrade.sidegradeReplay(srep, chkDowngrader);
+      const arr = await sidegrade.convertReplay(srep, chkDowngrader);
 
       if (download) {
         downloadBlob(arr, `gol-${files[0].name}`);
         return;
       }
 
-      var buf = openBw.allocate(arr, openBw.ALLOC_NORMAL);
-      start_replay(buf, arr.length);
-      openBw._free(buf);
+      try {
+        var buf = openBw.allocate(arr, openBw.ALLOC_NORMAL);
+        start_replay(buf, arr.length);
+        openBw._free(buf);
+      } catch (e) {
+        console.error(openBw.getExceptionMessage(e));
+      }
     };
   })();
   reader.readAsArrayBuffer(files[0]);
@@ -449,16 +454,23 @@ function files_to_uint8array_buffers() {
   });
 }
 
+let lastUnits = 0;
 window.log = () => {
   // console.log(`frame: ${openBw._replay_get_value(2)}`);
   // console.log("units", openBw._counts(0, 1));
+  // console.log("units", openBw._counts(0, 1));
+  const units = openBw._counts(0, 1);
+  if (units != lastUnits) {
+    console.log("units", units);
+    lastUnits = units;
+  }
   // console.log("upgrades", openBw._counts(0, 2));
   // console.log("research", openBw._counts(0, 3));
   // console.log("sprite", openBw._counts(0, 4));
   // console.log("image", openBw._counts(0, 5));
   const sounds = openBw._counts(0, 6);
   if (sounds) {
-    console.log(openBw.get_util_funcs().get_sounds());
+    // console.log(openBw.get_util_funcs().get_sounds());
   }
   // console.log("sound", sounds);
   // console.log("building queue", openBw._counts(0, 7));

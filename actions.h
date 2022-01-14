@@ -1002,56 +1002,45 @@ struct action_functions: state_functions {
 	}
 
 	template<typename reader_T>
-	bool read_action_select(int owner, reader_T&& r) {
+	bool read_action_select(int owner, reader_T&& r, bool scr = false) {
 		size_t n = r.template get<uint8_t>();
 		if (n > 12) error("invalid selection of %d units", n);
 		static_vector<unit_t*, 12> units;
 		for (size_t i = 0; i != n; ++i) {
 			auto uid = unit_id(r.template get<uint16_t>());
+			if (scr) {
+				r.template get<uint16_t>(); // throw away unknown
+			}
 			units.push_back(get_unit(uid));
 		}
 		return action_select(owner, units);
 	}
 
-	/*uint16_t to_bw_tag(uint16_t scr_tag) {
-		auto index = 1700 - (3400 - (scr_tag & 0x1fff));
-		auto generation = scr_tag >> 13;
-		return index | (generation << 11);
-	}*/
-
-	//template<typename reader_T>
-	//bool read_action_select_ext(int owner, reader_T&& r) {
-	//	size_t n = r.template get<uint8_t>();
-	//	if (n > 12) error("invalid selection of %d units", n);
-	//	static_vector<unit_t*, 12> units;
-	//	for (size_t i = 0; i != n; ++i) {
-	//		auto tag = to_bw_tag(r.template get<uint16_t>());
-	//		auto uid = unit_id(tag);
-	//		auto unk = r.template get<uint16_t>();
-	//		units.push_back(get_unit(uid));
-	//	}
-	//	return action_select(owner, units);
-	//}
-
 	template<typename reader_T>
-	bool read_action_shift_select(int owner, reader_T&& r) {
+	bool read_action_shift_select(int owner, reader_T&& r, bool scr = false) {
 		size_t n = r.template get<uint8_t>();
 		if (n > 12) error("invalid selection of %d units", n);
 		static_vector<unit_t*, 12> units;
 		for (size_t i = 0; i != n; ++i) {
 			auto uid = unit_id(r.template get<uint16_t>());
+			if (scr) {
+				r.template get<uint16_t>(); // throw away unknown
+			}
 			units.push_back(get_unit(uid));
 		}
 		return action_shift_select(owner, units);
 	}
 
 	template<typename reader_T>
-	bool read_action_deselect(int owner, reader_T&& r) {
+	bool read_action_deselect(int owner, reader_T&& r, bool scr = false) {
 		size_t n = r.template get<uint8_t>();
 		if (n > 12) error("invalid deselection of %d units", n);
 		static_vector<unit_t*, 12> units;
 		for (size_t i = 0; i != n; ++i) {
 			auto uid = unit_id(r.template get<uint16_t>());
+			if (scr) {
+				r.template get<uint16_t>(); // throw away unknown
+			}
 			units.push_back(get_unit(uid));
 		}
 		return action_deselect(owner, units);
@@ -1064,10 +1053,13 @@ struct action_functions: state_functions {
 	}
 
 	template<typename reader_T>
-	bool read_action_default_order(int owner, reader_T&& r) {
+	bool read_action_default_order(int owner, reader_T&& r, bool scr = false) {
 		int x = r.template get<int16_t>();
 		int y = r.template get<int16_t>();
 		unit_t* target = get_unit(unit_id(r.template get<uint16_t>()));
+		if (scr) {
+			r.template get<uint16_t>(); // throw away unknown
+		}
 		UnitTypes target_unit_type_id = (UnitTypes)r.template get<uint16_t>();
 		const unit_type_t* target_unit_type = target_unit_type_id == UnitTypes::None ? nullptr : get_unit_type(target_unit_type_id);
 		bool queue = r.template get<uint8_t>() != 0;
@@ -1096,10 +1088,13 @@ struct action_functions: state_functions {
 	}
 
 	template<typename reader_T>
-	bool read_action_order(int owner, reader_T&& r) {
+	bool read_action_order(int owner, reader_T&& r, bool scr = false) {
 		int x = r.template get<int16_t>();
 		int y = r.template get<int16_t>();
 		unit_t* target = get_unit(unit_id(r.template get<uint16_t>()));
+		if (scr) {
+			r.template get<uint16_t>(); // throw away unknown
+		}
 		UnitTypes target_unit_type_id = (UnitTypes)r.template get<uint16_t>();
 		const unit_type_t* target_unit_type = target_unit_type_id == UnitTypes::None ? nullptr : get_unit_type(target_unit_type_id);
 		Orders order_id = (Orders)r.template get<uint8_t>();
@@ -1370,11 +1365,14 @@ struct action_functions: state_functions {
 		on_action(owner, action_id);
 		switch (action_id) {
 		case 9:
-			return read_action_select(owner, r);
+		case 99:
+			return read_action_select(owner, r, action_id == 99);
 		case 10:
-			return read_action_shift_select(owner, r);
+		case 100:
+			return read_action_shift_select(owner, r, action_id == 100);
 		case 11:
-			return read_action_deselect(owner, r);
+		case 101:
+			return read_action_deselect(owner, r, action_id == 101);
 		case 12:
 			return read_action_build(owner, r);
 		case 13:
@@ -1386,9 +1384,11 @@ struct action_functions: state_functions {
 		case 19:
 			return read_action_control_group(owner, r);
 		case 20:
-			return read_action_default_order(owner, r);
+		case 96:
+			return read_action_default_order(owner, r, action_id == 96);
 		case 21:
-			return read_action_order(owner, r);
+		case 97:
+			return read_action_order(owner, r, action_id == 97);
 		case 24:
 			return read_action_cancel_building_unit(owner, r);
 		case 25:
@@ -1420,6 +1420,7 @@ struct action_functions: state_functions {
 		case 40:
 			return read_action_unload_all(owner, r);
 		case 41:
+		case 98:
 			return read_action_unload(owner, r);
 		case 42:
 			return read_action_morph_archon(owner, r);

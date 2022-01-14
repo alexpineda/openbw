@@ -1,0 +1,1 @@
+browserify D:\dev\titan-reactor\packages\downgrade-replay\src -o downgrade.js -d -s sidegrade && node serve.js

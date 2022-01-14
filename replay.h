@@ -51,7 +51,7 @@ struct replay_file_reader {
 			size_t segment_output_size = output_size - output_pos;
 			if (segment_output_size > 8192) segment_output_size = 8192;
 			
-			if (segment_input_size > segment_output_size) error("replay_file_reader: output buffer too small");
+			if (segment_input_size > segment_output_size) error("replay_file_reader: output buffer too small %u > %u ",  segment_input_size, segment_output_size);
 			if (segment_input_size == segment_output_size) {
 				r.get_bytes(output + output_pos, segment_input_size);
 			} else {
@@ -71,6 +71,13 @@ struct replay_file_reader {
 	template<typename T, bool little_endian = default_little_endian>
 	T get() {
 		return get_impl<T, little_endian>(*this);
+	}
+
+	template<typename T, bool little_endian, typename self_T>
+	T get_raw(self_T& self) {
+		typename std::aligned_storage<sizeof(T), alignof(T)>::type buf;
+		r.get_bytes(reinterpret_cast<uint8_t*>(&buf), sizeof(T));
+		return value_at<T, little_endian>((uint8_t*)&buf);
 	}
 };
 
@@ -105,9 +112,16 @@ struct replay_functions: action_functions {
 	void load_replay(reader_T&& r, bool initial_processing = true, std::vector<uint8_t>* get_map_data = nullptr) {
 		
 		uint32_t identifier = r.template get<uint32_t>();
-		if (identifier != 0x53526574) {
+		if (identifier != 0x53526577) {
 			error("load_replay: invalid identifier %#x", identifier);
 		}
+
+		// uint32_t scr_section = r.template get_raw<uint32_t>();
+		uint32_t scr_section = r.template get<uint32_t>();
+		// uint32_t container_size = r.template get_raw<uint32_t>();
+		uint32_t container_size = r.template get<uint32_t>();
+		st.units_container.reset(container_size);
+		unit_id::unit_generation_size = container_size == 1700 ? 5 : 3;
 
 		std::array<uint8_t, 633> game_info_buffer;
 		r.get_bytes(game_info_buffer.data(), game_info_buffer.size());
