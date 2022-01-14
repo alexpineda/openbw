@@ -54,13 +54,23 @@ namespace bwgame
 			cont.insert(std::next(cont.begin()), v);
 	}
 
-	template <typename T, size_t max_size, size_t allocation_granularity>
+	template <typename T, size_t init_max_size, size_t allocation_granularity>
 	struct object_container
 	{
 		a_deque<std::array<T, allocation_granularity>> list;
 		intrusive_list<T, default_link_f> free_list;
 		size_t size = 0;
+		size_t max_size = init_max_size;
 		uint32_t titan_index_counter;
+
+		void reset()
+		{
+			list.clear();
+			free_list.clear();
+			size = 0;
+			max_size = init_max_size;
+			titan_index_counter = 0;
+		}
 
 		T *get(size_t index, bool add_new_to_free = true)
 		{
@@ -434,7 +444,8 @@ namespace bwgame
 				entry_container[i].tile_pos = n.entry_container[i].tile_pos;
 				entry_container[i].n_neighboring_creep_tiles = n.entry_container[i].n_neighboring_creep_tiles;
 			}
-			auto assemble = [&](auto &dst, auto &src) {
+			auto assemble = [&](auto &dst, auto &src)
+			{
 				dst.clear();
 				for (auto &v : src)
 				{

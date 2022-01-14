@@ -1461,8 +1461,6 @@ int main()
 {
 	using namespace bwgame;
 
-	log("titan v1\n");
-
 	std::chrono::high_resolution_clock clock;
 	auto start = clock.now();
 

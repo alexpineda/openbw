@@ -50,4 +50,5 @@ var staticServe = function(req, res) {
 
 var httpServer = http.createServer(staticServe);
 
+console.log('Listening on port 8000');
 httpServer.listen(8000);
