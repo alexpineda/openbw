@@ -20,7 +20,7 @@ namespace bwgame
 
 		unit_id_t() = default;
 		explicit unit_id_t(T raw_value) : raw_value(raw_value) {}
-		explicit unit_id_t(size_t index, unsigned int generation) : raw_value((T)(index | generation << 13)) {}
+		explicit unit_id_t(size_t index, unsigned int generation) : raw_value((T)(index | generation << (16 - unit_generation_size))) {}
 		bool operator==(const unit_id_t &n) const
 		{
 			return raw_value == n.raw_value;
