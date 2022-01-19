@@ -1357,14 +1357,8 @@ extern "C" char *get_buffer(int index)
 	{
 	case 0: //tiles + creep (t->flags & tile_t::flag_has_creep);
 		return reinterpret_cast<char *>(&m->ui.st.tiles.data()[0]);
-	case 2: //
-	case 3: //
-	case 4: //
-	case 5: //
-	case 6: //
-	case 7: //
-	case 8: //
-		return reinterpret_cast<char *>(&m->ui.played_sounds.data()[0]);
+    default:
+		return nullptr;
 	}
 }
 
