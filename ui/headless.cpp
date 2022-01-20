@@ -276,8 +276,6 @@ extern "C" void dlfree(void *);
 
 size_t max_bytes_allocated = 160 * 1024 * 1024;
 
-#ifdef EMSCRIPTEN
-
 namespace bwgame
 {
 	namespace data_loading
@@ -539,8 +537,6 @@ struct util_functions : state_functions
 		}                                               \
 	}
 
-#define DUMP_POS(field) o.set(STR(field), dump_pos(dumping->field))
-
 	template <typename T>
 	T decode(T &v)
 	{
@@ -574,19 +570,9 @@ struct util_functions : state_functions
 		return f.get_unit_id(unit).raw_value;
 	}
 
-	template <typename T>
-	val dump_pos(T &pos)
+	std::pair<val, bool> dump_image(image_t *dumping, const bool dirty_check)
 	{
 		val o = val::object();
-		o.set("x", val(decode(pos.x)));
-		o.set("y", val(decode(pos.y)));
-		return o;
-	}
-
-	val dump_image(image_t *dumping)
-	{
-		val o = val::object();
-		const bool dirty_check = false;
 		bool is_dirty = false;
 		const auto is_new = std::get<1>(image_dumps.emplace(dumping->titan_index, image_dump_t{}));
 		const auto in = image_dumps.find(dumping->titan_index);
@@ -603,13 +589,12 @@ struct util_functions : state_functions
 		DUMP_VAL(modifier);
 		DUMP_VAL_AS(modifierData1, modifier_data1);
 		DUMP_VAL_AS(frameIndex, frame_index);
-		return o;
+		return std::make_pair(o, is_dirty);
 	}
 
-	val dump_sprite(sprite_t *dumping)
+	std::pair<val, bool> dump_sprite(sprite_t *dumping, const bool dirty_check)
 	{
 		val o = val::object();
-		const bool dirty_check = false;
 		bool is_dirty = false;
 		const auto is_new = std::get<1>(sprite_dumps.emplace(dumping->titan_index, sprite_dump_t{}));
 		const auto in = sprite_dumps.find(dumping->titan_index);
@@ -628,17 +613,24 @@ struct util_functions : state_functions
 		DUMP_VAL(width);
 		DUMP_VAL(height);
 		DUMP_RAW(mainImageTitanIndex, dumping->main_image->titan_index);
-		DUMP_POS(position);
+
+		DUMP_RAW(x, decode(dumping->position.x));
+		DUMP_RAW(y, decode(dumping->position.y));
 
 		val r = val::array();
 		size_t i = 0;
 		for (auto image : ptr(dumping->images))
 		{
-			r.set(i++, dump_image(image));
+			auto img = dump_image(image, dirty_check);
+			if (dirty_check && !img.second)
+			{
+				continue;
+			}
+			r.set(i++, std::get<0>(img));
 		}
 		o.set("images", r);
 
-		return o;
+		return std::make_pair(o, is_dirty);
 	}
 
 	// val dump_thingy(thingy_t *dumping)
@@ -687,12 +679,11 @@ struct util_functions : state_functions
 		return o;
 	}
 
-	std::pair<val, bool> dump_unit(unit_t *dumping)
+	std::pair<val, bool> dump_unit(unit_t *dumping, const bool dirty_check)
 	{
 		val o = val::object();
 
 		const int unit_id = decode(dumping);
-		const bool dirty_check = true;
 		bool is_dirty = false;
 		const auto is_new = std::get<1>(unit_dumps.emplace(unit_id, unit_dump_t{}));
 		const auto in = unit_dumps.find(unit_id);
@@ -891,7 +882,7 @@ struct util_functions : state_functions
 		return r;
 	}
 
-	auto get_units()
+	auto get_units(const bool dirty_check = true)
 	{
 		val r = val::array();
 		size_t i = 0;
@@ -899,7 +890,7 @@ struct util_functions : state_functions
 		{
 			for (unit_t *u : ptr(st.player_units[owner]))
 			{
-				auto o = dump_unit(u);
+				auto o = dump_unit(u, dirty_check);
 				if (std::get<1>(o))
 				{
 					r.set(i++, std::get<0>(o));
@@ -920,15 +911,20 @@ struct util_functions : state_functions
 		return r;
 	}
 
-	auto get_sprites()
+	auto get_sprites(const bool dirty_check = true)
 	{
 		val r = val::array();
-		size_t i = 0;
+		int i = 0;
 
 		auto sprites = sort_sprites();
 		for (auto &sprite : sprites)
 		{
-			r.set(i++, dump_sprite((sprite_t *)sprite.second));
+			auto o = dump_sprite((sprite_t *)sprite.second, dirty_check);
+			if (dirty_check && !o.second)
+			{
+				continue;
+			}
+			r.set(i++, o.first);
 		}
 
 		return r;
@@ -1374,7 +1370,6 @@ extern "C" void load_replay(const uint8_t *data, size_t len)
 	m->ui.load_replay_data(data, len);
 	any_replay_loaded = true;
 }
-#endif
 
 int main()
 {

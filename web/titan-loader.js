@@ -466,8 +466,8 @@ window.log = () => {
     // console.log("units", openBw.get_util_funcs().get_units());
     // lastUnits = units;
   // }
-  console.log("units", openBw.get_util_funcs().get_units());
-  console.log("sprites", openBw.get_util_funcs().get_sprites());
+  console.log("units", openBw.get_util_funcs().get_units(true));
+  console.log("sprites", openBw.get_util_funcs().get_sprites(true));
 
   // console.log("upgrades", openBw._counts(0, 2));
   // console.log("research", openBw._counts(0, 3));
