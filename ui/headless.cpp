@@ -77,7 +77,7 @@ struct main_t
 
 	void reset()
 	{
-		// saved_states.clear();
+		saved_states.clear();
 		ui.reset();
 	}
 
@@ -421,6 +421,13 @@ struct sprite_dump_t
 
 std::map<int, sprite_dump_t> sprite_dumps;
 
+void reset_dumps()
+{
+	unit_dumps.clear();
+	sprite_dumps.clear();
+	image_dumps.clear();
+}
+
 extern "C" double replay_get_value(int index)
 {
 	switch (index)
@@ -462,9 +469,7 @@ extern "C" void replay_set_value(int index, double value)
 			m->ui.replay_frame = 0;
 		if (m->ui.replay_frame > m->ui.replay_st.end_frame)
 			m->ui.replay_frame = m->ui.replay_st.end_frame;
-		unit_dumps.clear();
-		sprite_dumps.clear();
-		image_dumps.clear();
+		reset_dumps();
 		break;
 	case 6:
 		m->ui.replay_frame = (int)(m->ui.replay_st.end_frame * value);
@@ -472,9 +477,7 @@ extern "C" void replay_set_value(int index, double value)
 			m->ui.replay_frame = 0;
 		if (m->ui.replay_frame > m->ui.replay_st.end_frame)
 			m->ui.replay_frame = m->ui.replay_st.end_frame;
-		unit_dumps.clear();
-		sprite_dumps.clear();
-		image_dumps.clear();
+		reset_dumps();
 		break;
 	}
 }
@@ -1414,6 +1417,7 @@ extern "C" int next_frame()
 extern "C" void load_replay(const uint8_t *data, size_t len)
 {
 	m->reset();
+	reset_dumps();
 	m->ui.load_replay_data(data, len);
 	any_replay_loaded = true;
 }

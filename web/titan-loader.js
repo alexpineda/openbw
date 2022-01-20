@@ -418,7 +418,11 @@ function callMain() {
 }
 
 function loop() {
-  openBw._next_frame();
+  try {
+    openBw._next_frame();
+  } catch (e) {
+    console.error(openBw.getExceptionMessage(e));
+  }
   requestAnimationFrame(loop)
 }
 

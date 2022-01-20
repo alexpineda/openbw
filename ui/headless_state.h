@@ -135,6 +135,7 @@ namespace bwgame
 		{
 			deleted_images.clear();
 			deleted_sprites.clear();
+			played_sounds.clear();
 
 			apm = {};
 			auto &game = *st.game;
@@ -143,7 +144,7 @@ namespace bwgame
 			replay_st = replay_state();
 			action_st = action_state();
 
-			int replay_frame = 0;
+			replay_frame = 0;
 			st.global = &global_st;
 			st.game = &game;
 		}
