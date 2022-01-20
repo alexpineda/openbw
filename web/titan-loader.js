@@ -425,7 +425,7 @@ function loop() {
 function start_replay(buffer, length) {
   openBw._load_replay(buffer, length);
   console.log("replay loaded");
-  requestAnimationFrame(loop)
+  // requestAnimationFrame(loop)
 }
 
 function files_to_uint8array_buffers() {
@@ -459,11 +459,16 @@ window.log = () => {
   // console.log(`frame: ${openBw._replay_get_value(2)}`);
   // console.log("units", openBw._counts(0, 1));
   // console.log("units", openBw._counts(0, 1));
-  const units = openBw._counts(0, 1);
-  if (units != lastUnits) {
-    console.log("units", openBw.get_util_funcs().get_units());
-    lastUnits = units;
-  }
+
+
+  // const units = openBw._counts(0, 1);
+  // if (units != lastUnits) {
+    // console.log("units", openBw.get_util_funcs().get_units());
+    // lastUnits = units;
+  // }
+  console.log("units", openBw.get_util_funcs().get_units());
+  console.log("sprites", openBw.get_util_funcs().get_sprites());
+
   // console.log("upgrades", openBw._counts(0, 2));
   // console.log("research", openBw._counts(0, 3));
   // console.log("sprite", openBw._counts(0, 4));

@@ -441,64 +441,165 @@ struct js_unit
 	auto build_type() const { return u->build_queue.empty() ? nullptr : u->build_queue.front(); }
 };
 
+
+struct unit_dump_t {
+	int id;
+	int typeId;
+	int owner;
+	int x;
+	int y;
+	double hp;
+	double energy;
+	double shields;
+	uint32_t spriteTitanIndex;
+	int statusFlags;
+	size_t direction;
+	int resourceAmount;
+	int remainingBuildtime;
+	int remainingTraintime;
+	int kills;
+	int order;
+	double angle;
+	int subunit;
+	int orderState;
+	int groundWeaponCooldown;
+	int airWeaponCooldown;
+	int spellCooldown;
+	size_t index;
+	unsigned int unit_id_generation;
+	int remainingTrainTime;
+};
+
+std::map<int, unit_dump_t> unit_dumps;
+
+struct image_dump_t {
+	size_t index;
+	uint32_t titanIndex;
+	int typeId;
+	int flags;
+	int x; //pos
+	int y; //pos
+	int modifier;
+	int modifierData1;
+	size_t frameIndex;
+};
+
+std::map<int, image_dump_t> image_dumps;
+
+
+struct sprite_dump_t {
+	size_t index;
+	uint32_t titanIndex;
+	int owner;
+	int typeId;
+	int selection_index;
+	int visibility_flags;
+	int elevation_level;
+	int flags;
+	int selection_timer;
+	int width;
+	int height;
+	int x; //pos
+	int y; //pos
+	int mainImageTitanIndex;
+};
+
+std::map<int, sprite_dump_t> sprite_dumps;
+
 struct util_functions : state_functions
 {
 	util_functions(state &st) : state_functions(st) {}
 
 #define STR(a) #a
-#define DUMP_VAL(name) o.set(STR(name), to_emscripten(dumping->name))
-#define DUMP_VAL_AS(aka, name) o.set(STR(aka), to_emscripten(dumping->name))
+#define DUMP_RAW(name, value)\
+	if (is_new || !dirty_check || out.name != value) {\
+	 o.set(STR(name), val(value)); \
+	 out.name = value;\
+	 is_dirty = true;\
+	}
+
+#define DUMP_VAL(name)\
+	{\
+		auto value = decode(dumping->name);\
+		if (is_new || !dirty_check || out.name != value) {\
+			o.set(STR(name), val(value));\
+			out.name = value;\
+	 		is_dirty = true;\
+		}\
+	}
+
+#define DUMP_VAL_AS(aka, name)\
+	{\
+		auto value = decode(dumping->name);\
+		if (is_new || !dirty_check || out.aka != value) {\
+			o.set(STR(aka), val(value));\
+			out.aka = value;\
+	 		is_dirty = true;\
+		}\
+	}
+
 #define DUMP_POS(field) o.set(STR(field), dump_pos(dumping->field))
 
 	template <typename T>
-	val to_emscripten(T &v)
+	T decode(T &v)
 	{
-		return val(v);
+		return v;
 	}
-	val to_emscripten(fp8 &v)
+
+	double decode(fp8 &v)
 	{
 		double as_double = v.raw_value;
 		as_double /= (1 << v.fractional_bits);
-		return val(as_double);
+		return as_double;
 	}
 
 	template <typename T>
-	val to_emscripten(id_type_for<T> *v)
+	int decode(id_type_for<T> *v)
 	{
 		if (!v)
 		{
-			return val::null();
+			return -1;
 		}
-		return val((int)v->id);
+		return (int)v->id;
 	}
 
-	val to_emscripten(unit_t *unit)
+	int decode(unit_t *unit)
 	{
 		util_functions f(m->ui.st);
 		if (!unit)
 		{
-			return val::null();
+			return -1;
 		}
-		return val(f.get_unit_id(unit).raw_value);
+		return f.get_unit_id(unit).raw_value;
 	}
+
 
 	template <typename T>
 	val dump_pos(T &pos)
 	{
 		val o = val::object();
-		o.set("x", to_emscripten(pos.x));
-		o.set("y", to_emscripten(pos.y));
+		o.set("x", val(decode(pos.x)));
+		o.set("y", val(decode(pos.y)));
 		return o;
 	}
 
 	val dump_image(image_t *dumping)
 	{
 		val o = val::object();
+		const bool dirty_check = false;
+		bool is_dirty = false;
+		const auto is_new = std::get<1>(image_dumps.emplace(dumping->titan_index, image_dump_t{}));
+		const auto in = image_dumps.find(dumping->titan_index);
+		image_dump_t &out = in->second;
+
+		o.set("titanIndex", val(dumping->titan_index));
 		DUMP_VAL(index);
-		DUMP_VAL_AS(titanIndex, titan_index);
-		o.set("typeId", val((int)dumping->image_type->id));
+		DUMP_RAW(typeId, (int)dumping->image_type->id);
 		DUMP_VAL(flags);
-		DUMP_POS(offset);
+
+		DUMP_RAW(x, decode(dumping->offset.x));
+		DUMP_RAW(y, decode(dumping->offset.y));
+
 		DUMP_VAL(modifier);
 		DUMP_VAL_AS(modifierData1, modifier_data1);
 		DUMP_VAL_AS(frameIndex, frame_index);
@@ -508,9 +609,16 @@ struct util_functions : state_functions
 	val dump_sprite(sprite_t *dumping)
 	{
 		val o = val::object();
+		const bool dirty_check = false;
+		bool is_dirty = false;
+		const auto is_new = std::get<1>(sprite_dumps.emplace(dumping->titan_index, sprite_dump_t{}));
+		const auto in = sprite_dumps.find(dumping->titan_index);
+		sprite_dump_t &out = in->second;
+
+		o.set("titanIndex", val(dumping->titan_index));
+
 		DUMP_VAL(index);
-		DUMP_VAL_AS(titanIndex, titan_index);
-		o.set("typeId", val((int)dumping->sprite_type->id));
+		DUMP_RAW(typeId, (int)dumping->sprite_type->id);
 		DUMP_VAL(owner);
 		DUMP_VAL(selection_index);
 		DUMP_VAL(visibility_flags);
@@ -519,7 +627,7 @@ struct util_functions : state_functions
 		DUMP_VAL(selection_timer);
 		DUMP_VAL(width);
 		DUMP_VAL(height);
-		o.set("mainImageTitanIndex", val(dumping->main_image->titan_index));
+		DUMP_RAW(mainImageTitanIndex, dumping->main_image->titan_index);
 		DUMP_POS(position);
 
 		val r = val::array();
@@ -533,107 +641,117 @@ struct util_functions : state_functions
 		return o;
 	}
 
-	val dump_thingy(thingy_t *dumping)
-	{
-		val o = val::object();
-		DUMP_VAL(hp);
-		o.set("sprite", dump_sprite(dumping->sprite));
-		return o;
-	}
+	// val dump_thingy(thingy_t *dumping)
+	// {
+	// 	val o = val::object();
+	// 	DUMP_VAL(hp);
+	// 	o.set("sprite", dump_sprite(dumping->sprite));
+	// 	return o;
+	// }
 
-	val dump_target(target_t *dumping)
-	{
-		val o = val::object();
-		DUMP_POS(pos);
-		DUMP_VAL(unit);
-		return o;
-	}
+	// val dump_target(target_t *dumping)
+	// {
+	// 	val o = val::object();
+	// 	DUMP_POS(pos);
+	// 	DUMP_VAL(unit);
+	// 	return o;
+	// }
 
-	val dump_flingy(flingy_t *dumping)
-	{
-		val o = val::object();
-		DUMP_VAL(index);
-		o.set("move_target", dump_target(&dumping->move_target));
-		DUMP_POS(next_movement_waypoint);
-		DUMP_POS(next_target_waypoint);
-		DUMP_VAL(movement_flags);
-		DUMP_POS(position);
-		DUMP_POS(exact_position);
-		DUMP_VAL(flingy_top_speed);
-		DUMP_VAL(current_speed);
-		DUMP_VAL(next_speed);
-		DUMP_POS(velocity);
-		DUMP_VAL(flingy_acceleration);
-		o.set("sprite", dump_sprite(dumping->sprite));
-		o.set("_thingy_t", dump_thingy(dumping));
-		return o;
-	}
+	// val dump_flingy(flingy_t *dumping)
+	// {
+	// 	val o = val::object();
+	// 	DUMP_VAL(index);
+	// 	o.set("move_target", dump_target(&dumping->move_target));
+	// 	DUMP_POS(next_movement_waypoint);
+	// 	DUMP_POS(next_target_waypoint);
+	// 	DUMP_VAL(movement_flags);
+	// 	DUMP_POS(position);
+	// 	DUMP_POS(exact_position);
+	// 	DUMP_VAL(flingy_top_speed);
+	// 	DUMP_VAL(current_speed);
+	// 	DUMP_VAL(next_speed);
+	// 	DUMP_POS(velocity);
+	// 	DUMP_VAL(flingy_acceleration);
+	// 	o.set("sprite", dump_sprite(dumping->sprite));
+	// 	o.set("_thingy_t", dump_thingy(dumping));
+	// 	return o;
+	// }
 
 	val dump_sound(played_sound_t *dumping)
 	{
 		val o = val::object();
-		DUMP_VAL_AS(typeId, id);
-		DUMP_VAL(x);
-		DUMP_VAL(y);
-		DUMP_VAL_AS(unitTypeId, unit_type_id);
+		o.set("typeId", val(dumping->id));
+		o.set("x", val(dumping->x));
+		o.set("y", val(dumping->y));
+		o.set("unitTypeId", val(dumping->unit_type_id));
 		return o;
 	}
 
-	val dump_unit(unit_t *dumping)
+	std::pair<val, bool> dump_unit(unit_t *dumping)
 	{
 		val o = val::object();
 
-		auto unit_id = get_unit_id(dumping).raw_value;
+		const int unit_id = decode(dumping);
+		const bool dirty_check = true;
+		bool is_dirty = false;
+		const auto is_new = std::get<1>(unit_dumps.emplace(unit_id, unit_dump_t{}));
+		const auto in = unit_dumps.find(unit_id);
+		unit_dump_t &out  = in->second;
 
+		//always set id
 		o.set("id", val(unit_id));
-		o.set("typeId", val((int)dumping->unit_type->id));
-		DUMP_VAL(owner);
-		o.set("x", val(dumping->position.x));
-		o.set("y", val(dumping->position.y));
-		DUMP_VAL(hp);
 
+		DUMP_RAW(typeId, (int)dumping->unit_type->id);
+		DUMP_VAL(owner);
+		DUMP_RAW(x, dumping->position.x);
+		DUMP_RAW(y, dumping->position.y);
+		DUMP_VAL(hp);
 		DUMP_VAL(energy);
 		DUMP_VAL_AS(shields, shield_points);
-		o.set("spriteTitanIndex", val(dumping->sprite->titan_index));
+		DUMP_RAW(spriteTitanIndex, dumping->sprite->titan_index);
 		DUMP_VAL_AS(statusFlags, status_flags);
-		o.set("direction", val(direction_index(dumping->heading)));
+		DUMP_RAW(direction, direction_index(dumping->heading));
 
 		if (dumping->unit_type->flags & dumping->unit_type->flag_resource && dumping->status_flags & dumping->status_flag_completed)
 		{
-			o.set("resourceAmount", val(dumping->building.resource.resource_count));
+			// DUMP_RAW(resourceAmount, dumping->building.resource.resource_count);
+			DUMP_RAW(remainingBuildtime, 0);
 		}
 		else
 		{
+			// DUMP_RAW(resourceAmount, 0);
 			DUMP_VAL_AS(remainingBuildtime, remaining_build_time);
 		}
 
 		if (dumping->current_build_unit)
 		{
 			int remainingTrainTime = ((float)dumping->current_build_unit->remaining_build_time / (float)dumping->current_build_unit->unit_type->build_time) * 255;
-			o.set("remainingTrainTime", val(remainingTrainTime));
+			DUMP_RAW(remainingTrainTime, remainingTrainTime);
+		} else {
+			DUMP_RAW(resourceAmount, 0);
 		}
 
 		DUMP_VAL_AS(kills, kill_count);
-		o.set("order", val((int)dumping->order_type->id));
+		// DUMP_RAW(order, (int)dumping->order.order_id);
 
 		{
 			int d = direction_index(dumping->heading);
 			d -= 64;
 			if (d < 0)
 				d += 256;
-			o.set("angle", (double)d * 3.14159265358979323846 / 128.0);
+			DUMP_RAW(angle, (double)d * 3.14159265358979323846 / 128.0);
 		}
 
 		DUMP_VAL(subunit);
-		DUMP_VAL(order_state);
+		DUMP_VAL_AS(orderState, order_state);
 
 		// for battle visualizations
-		DUMP_VAL(ground_weapon_cooldown);
-		DUMP_VAL(air_weapon_cooldown);
-		DUMP_VAL(spell_cooldown);
+		DUMP_VAL_AS(groundWeaponCooldown, ground_weapon_cooldown);
+		DUMP_VAL_AS(airWeaponCooldown, air_weapon_cooldown);
+		DUMP_VAL_AS(spellCooldown, spell_cooldown);
 
 		// might need this for bullets?
-		o.set("order_target", dump_target(&dumping->order_target));
+		// o.set("orderTarget", dump_target(&dumping->order_target));
 
 		// for debugging unit tags
 		DUMP_VAL(index);
@@ -666,9 +784,9 @@ struct util_functions : state_functions
 		{
 			loaded.set(i, dumping->loaded_units[i].raw_value);
 		}
-		o.set("loaded_units", loaded);
+		// o.set("loaded_units", loaded);
 		// o.set("_flingy_t", dump_flingy(dumping));
-		return o;
+		return std::make_pair(o, is_dirty);
 	}
 
 #pragma pack(push, 1)
@@ -832,6 +950,10 @@ struct util_functions : state_functions
 		return r;
 	}
 
+	bool unit_is_dirty(unit_t &a, unit_dump_t unit_dump) {
+		return true;
+	}
+
 	auto get_units()
 	{
 		val r = val::array();
@@ -840,7 +962,15 @@ struct util_functions : state_functions
 		{
 			for (unit_t *u : ptr(st.player_units[owner]))
 			{
-				r.set(i++, dump_unit(u));
+				auto unit_id = get_unit_id(u).raw_value;
+				
+				auto eUnit = unit_dumps.find(unit_id);
+				if (eUnit == unit_dumps.end() || unit_is_dirty(*u, eUnit->second)) {
+					auto o = dump_unit(u);
+					if (std::get<1>(o)) {
+						r.set(i++, std::get<0>(o));
+					}
+				}
 			}
 		}
 		return r;
@@ -976,29 +1106,6 @@ struct util_functions : state_functions
 		}
 		return r;
 	}
-
-	auto get_all_tiles()
-	{
-		val r = val::array();
-		size_t i = 0;
-		for (tile_t *u : ptr(st.tiles))
-		{
-			r.set(i++, u);
-		}
-		return r;
-	}
-
-	// auto get_tiles_buffer() {
-	// 	char * buffer = (char*)malloc(st.tiles_buffer_size);
-	// 	char buffer[2* st.tiles.size()];
-
-	// 	 for (int i = 0; i < st.tiles.size(); ++i)
-	// 	{
-	// 		buffer[i*2] = st.tiles[i].explored;
-	// 		buffer[i*2+1] = st.tiles[i].visible;
-	// 	}
-	// 	return buffer;
-	// }
 	// std::vector<unitFrameData> units;
 
 	// auto get_units()

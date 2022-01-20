@@ -68,11 +68,7 @@ namespace bwgame
 		size_t max_size = init_max_size;
 		uint32_t titan_index_counter;
 
-		object_container() {
-			if (max_size == 1700 || max_size == 3400) {
-				printf("unit_container %u", max_size);
-			}
-		}
+		object_container() {}
 
 		object_container(size_t _max_size) {
 			max_size = _max_size;
