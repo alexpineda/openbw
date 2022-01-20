@@ -257,7 +257,7 @@ function has_all_files() {
  *****************************/
 
 function setupCallbacks() {
-  openBw.setupCallbacks(
+  openBw.setupCallbacks({
     js_fatal_error,
     js_pre_main_loop,
     js_post_main_loop,
@@ -265,7 +265,7 @@ function setupCallbacks() {
     js_read_data,
     js_load_done,
     js_file_index
-  );
+  });
 }
 
 const js_pre_main_loop = () => {};

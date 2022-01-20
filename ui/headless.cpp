@@ -43,7 +43,7 @@ namespace bwgame
 		{
 #ifdef EMSCRIPTEN
 			const char *p = str.c_str();
-			EM_ASM_({ js_fatal_error($0); }, p);
+			EM_ASM_({ js_callbacks.js_fatal_error($0); }, p);
 #endif
 			log("fatal error: %s\n", str);
 			std::terminate();
@@ -211,7 +211,7 @@ void out_of_memory()
 	printf("out of memory :(\n");
 #ifdef EMSCRIPTEN
 	const char *p = "out of memory :(";
-	EM_ASM_({ js_fatal_error($0); }, p);
+	EM_ASM_({ js_callbacks.js_fatal_error($0); }, p);
 #endif
 	throw std::bad_alloc();
 }
@@ -310,7 +310,7 @@ namespace bwgame
 
 			int get_file_index(a_string filename)
 			{
-				return EM_ASM_INT({ return js_file_index($0); }, filename.data());
+				return EM_ASM_INT({ return js_callbacks.js_file_index($0); }, filename.data());
 			}
 
 			void open(a_string filename)
@@ -326,10 +326,8 @@ namespace bwgame
 			void get_bytes(uint8_t *dst, size_t n)
 			{
 
-#ifdef __EMSCRIPTEN_PTHREADS__
-				MAIN_THREAD_EM_ASM({ js_read_data($0, $1, $2, $3); }, index, dst, file_pointer, n);
-#else
-				EM_ASM({ js_read_data($0, $1, $2, $3); }, index, dst, file_pointer, n);
+#ifdef EMSCRIPTEN
+				EM_ASM({ js_callbacks.js_read_data($0, $1, $2, $3); }, index, dst, file_pointer, n);
 #endif
 				file_pointer += n;
 			}
@@ -345,10 +343,8 @@ namespace bwgame
 
 			size_t size()
 			{
-#ifdef __EMSCRIPTEN_PTHREADS__
-				return MAIN_THREAD_EM_ASM_INT({ return js_file_size($0); }, index);
-#else
-				return EM_ASM_INT({ return js_file_size($0); }, index);
+#ifdef EMSCRIPTEN
+				return EM_ASM_INT({ return js_callbacks.js_file_size($0); }, index);
 #endif
 			}
 		};
@@ -1354,10 +1350,8 @@ extern "C" int next_frame_exact()
 	//@todo clear states
 	m->ui.next_frame();
 
-#ifdef __EMSCRIPTEN_PTHREADS__
-	MAIN_THREAD_ASYNC_EM_ASM({ js_post_main_loop(); });
-#else
-	EM_ASM({ js_post_main_loop(); });
+#ifdef EMSCRIPTEN
+	EM_ASM({ js_callbacks.js_post_main_loop(); });
 #endif
 
 	return m->ui.st.current_frame;
@@ -1367,10 +1361,8 @@ extern "C" int next_frame()
 {
 	m->update();
 
-#ifdef __EMSCRIPTEN_PTHREADS__
-	MAIN_THREAD_ASYNC_EM_ASM({ js_post_main_loop(); });
-#else
-	EM_ASM({ js_post_main_loop(); });
+#ifdef EMSCRIPTEN
+	EM_ASM({ js_callbacks.js_post_main_loop(); });
 #endif
 
 	return m->ui.st.current_frame;
@@ -1407,7 +1399,7 @@ int main()
 #ifdef EMSCRIPTEN
 	::m = &m;
 	::g_m = &m;
-	MAIN_THREAD_EM_ASM({ js_load_done(); });
+	MAIN_THREAD_EM_ASM({ js_callbacks.js_load_done(); });
 	emscripten_exit_with_live_runtime();
 #endif
 
