@@ -789,66 +789,6 @@ struct util_functions : state_functions
 		return std::make_pair(o, is_dirty);
 	}
 
-#pragma pack(push, 1)
-	struct spriteFrameData
-	{
-		short int index;
-		short int id = -1;
-		char owner;
-		char elevation;
-		int flags;
-		short int x;
-		short int y;
-		char image_length = 0;
-		short int main_image_index = -1;
-	};
-
-	struct imageFrameData
-	{
-		short int index;
-		short int id;
-		int flags;
-		short int frame_index;
-		short int x;
-		short int y;
-		int modifier;
-		int modifier_data1;
-	};
-
-	struct unitFrameData
-	{
-		unsigned short int id;
-		short int typeId;
-		short int owner;
-		short int x;
-		short int y;
-		short int hp;
-		short int energy;
-		short int sprite_index = -1;
-		int status_flags;
-		short int direction;
-		short int remainingBuildTime;
-		short int shields;
-		unsigned char order;
-		unsigned char remainingTrainTime = 0;
-		short int kills;
-
-		//int ground_weapon_cooldown;
-		//int air_weapon_cooldown;
-		//int spell_cooldown;
-		//int rank_increase;
-		//int kill_count;
-		//build queue
-		//std::array<unit_id, 8> loaded_units;
-		//direction_t heading;
-		//fp8 hp
-	};
-
-	//unit_t* bullet_target;
-	//xy bullet_target_pos;
-
-#pragma pack(pop)
-
 	uint32_t sprite_depth_order(const sprite_t *sprite) const
 	{
 		uint32_t score = 0;
@@ -950,10 +890,6 @@ struct util_functions : state_functions
 		return r;
 	}
 
-	bool unit_is_dirty(unit_t &a, unit_dump_t unit_dump) {
-		return true;
-	}
-
 	auto get_units()
 	{
 		val r = val::array();
@@ -962,15 +898,10 @@ struct util_functions : state_functions
 		{
 			for (unit_t *u : ptr(st.player_units[owner]))
 			{
-				auto unit_id = get_unit_id(u).raw_value;
-				
-				auto eUnit = unit_dumps.find(unit_id);
-				if (eUnit == unit_dumps.end() || unit_is_dirty(*u, eUnit->second)) {
 					auto o = dump_unit(u);
 					if (std::get<1>(o)) {
 						r.set(i++, std::get<0>(o));
 					}
-				}
 			}
 		}
 		return r;
@@ -983,17 +914,6 @@ struct util_functions : state_functions
 		for (auto sound : ptr(m->ui.played_sounds))
 		{
 			r.set(i++, dump_sound(sound));
-		}
-		return r;
-	}
-
-	auto get_thingies()
-	{
-		val r = val::array();
-		size_t i = 0;
-		for (thingy_t *u : ptr(st.active_thingies))
-		{
-			r.set(i++, u);
 		}
 		return r;
 	}
@@ -1247,21 +1167,6 @@ double fp8_to_double(fp8 &v)
 	return as_double;
 }
 
-val dump_pos(xy &pos)
-{
-	val o = val::object();
-	o.set("x", pos.x);
-	o.set("y", pos.y);
-	return o;
-}
-
-val dump_pos_fp8(xy_fp8 &pos)
-{
-	val o = val::object();
-	o.set("x", fp8_to_double(pos.x));
-	o.set("y", fp8_to_double(pos.y));
-	return o;
-}
 
 // val lookup_unit_extended(int32_t index)
 // {
@@ -1361,7 +1266,6 @@ EMSCRIPTEN_BINDINGS(openbw)
 		.function("get_completed_research", &util_functions::get_completed_research)
 		.function("get_incomplete_upgrades", &util_functions::get_incomplete_upgrades)
 		.function("get_incomplete_research", &util_functions::get_incomplete_research)
-		.function("get_thingies", &util_functions::get_thingies, allow_raw_pointers())
 		.function("get_sprites", &util_functions::get_sprites)
 		.function("get_images", &util_functions::get_images)
 		.function("get_bullets", &util_functions::get_bullets, allow_raw_pointers())
