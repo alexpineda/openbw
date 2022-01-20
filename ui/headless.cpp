@@ -1,7 +1,10 @@
 
 // based on openbw/gfxtest.cpp
 
+#ifdef EMSCRIPTEN
 #include <emscripten.h>
+#endif
+
 #include "headless_state.h"
 #include "common.h"
 #include "bwgame.h"
@@ -38,11 +41,9 @@ namespace bwgame
 
 		void fatal_error_str(a_string str)
 		{
+#ifdef EMSCRIPTEN
 			const char *p = str.c_str();
-#ifdef __EMSCRIPTEN_PTHREADS__
-			MAIN_THREAD_EM_ASM({ js_fatal_error($0); }, p);
-#else
-			EM_ASM({ js_fatal_error($0); }, p);
+			EM_ASM_({ js_fatal_error($0); }, p);
 #endif
 			log("fatal error: %s\n", str);
 			std::terminate();
@@ -208,11 +209,9 @@ auto freemem_rand()
 void out_of_memory()
 {
 	printf("out of memory :(\n");
+#ifdef EMSCRIPTEN
 	const char *p = "out of memory :(";
-#ifdef __EMSCRIPTEN_PTHREADS__
-	MAIN_THREAD_EM_ASM({ js_fatal_error($0); }, p);
-#else
-	EM_ASM({ js_fatal_error($0); }, p);
+	EM_ASM_({ js_fatal_error($0); }, p);
 #endif
 	throw std::bad_alloc();
 }
@@ -277,7 +276,8 @@ extern "C" void dlfree(void *);
 
 size_t max_bytes_allocated = 160 * 1024 * 1024;
 
-// EMSCRIPTEN
+#ifdef EMSCRIPTEN
+
 namespace bwgame
 {
 	namespace data_loading
@@ -310,11 +310,7 @@ namespace bwgame
 
 			int get_file_index(a_string filename)
 			{
-#ifdef __EMSCRIPTEN__
 				return EM_ASM_INT({ return js_file_index($0); }, filename.data());
-#else
-				return 0;
-#endif
 			}
 
 			void open(a_string filename)
@@ -365,6 +361,71 @@ main_t *m;
 int current_width = -1;
 int current_height = -1;
 
+struct unit_dump_t
+{
+	int id;
+	int typeId;
+	int owner;
+	int x;
+	int y;
+	double hp;
+	double energy;
+	double shields;
+	uint32_t spriteTitanIndex;
+	int statusFlags;
+	size_t direction;
+	int resourceAmount;
+	int remainingBuildtime;
+	int remainingTraintime;
+	int kills;
+	int order;
+	int subunit;
+	int orderState;
+	int groundWeaponCooldown;
+	int airWeaponCooldown;
+	int spellCooldown;
+	size_t index;
+	unsigned int unit_id_generation;
+	int remainingTrainTime;
+};
+
+std::map<int, unit_dump_t> unit_dumps;
+
+struct image_dump_t
+{
+	size_t index;
+	uint32_t titanIndex;
+	int typeId;
+	int flags;
+	int x; //pos
+	int y; //pos
+	int modifier;
+	int modifierData1;
+	size_t frameIndex;
+};
+
+std::map<int, image_dump_t> image_dumps;
+
+struct sprite_dump_t
+{
+	size_t index;
+	uint32_t titanIndex;
+	int owner;
+	int typeId;
+	int selection_index;
+	int visibility_flags;
+	int elevation_level;
+	int flags;
+	int selection_timer;
+	int width;
+	int height;
+	int x; //pos
+	int y; //pos
+	int mainImageTitanIndex;
+};
+
+std::map<int, sprite_dump_t> sprite_dumps;
+
 extern "C" double replay_get_value(int index)
 {
 	switch (index)
@@ -406,6 +467,9 @@ extern "C" void replay_set_value(int index, double value)
 			m->ui.replay_frame = 0;
 		if (m->ui.replay_frame > m->ui.replay_st.end_frame)
 			m->ui.replay_frame = m->ui.replay_st.end_frame;
+		unit_dumps.clear();
+		sprite_dumps.clear();
+		image_dumps.clear();
 		break;
 	case 6:
 		m->ui.replay_frame = (int)(m->ui.replay_st.end_frame * value);
@@ -413,6 +477,9 @@ extern "C" void replay_set_value(int index, double value)
 			m->ui.replay_frame = 0;
 		if (m->ui.replay_frame > m->ui.replay_st.end_frame)
 			m->ui.replay_frame = m->ui.replay_st.end_frame;
+		unit_dumps.clear();
+		sprite_dumps.clear();
+		image_dumps.clear();
 		break;
 	}
 }
@@ -441,100 +508,39 @@ struct js_unit
 	auto build_type() const { return u->build_queue.empty() ? nullptr : u->build_queue.front(); }
 };
 
-
-struct unit_dump_t {
-	int id;
-	int typeId;
-	int owner;
-	int x;
-	int y;
-	double hp;
-	double energy;
-	double shields;
-	uint32_t spriteTitanIndex;
-	int statusFlags;
-	size_t direction;
-	int resourceAmount;
-	int remainingBuildtime;
-	int remainingTraintime;
-	int kills;
-	int order;
-	int subunit;
-	int orderState;
-	int groundWeaponCooldown;
-	int airWeaponCooldown;
-	int spellCooldown;
-	size_t index;
-	unsigned int unit_id_generation;
-	int remainingTrainTime;
-};
-
-std::map<int, unit_dump_t> unit_dumps;
-
-struct image_dump_t {
-	size_t index;
-	uint32_t titanIndex;
-	int typeId;
-	int flags;
-	int x; //pos
-	int y; //pos
-	int modifier;
-	int modifierData1;
-	size_t frameIndex;
-};
-
-std::map<int, image_dump_t> image_dumps;
-
-
-struct sprite_dump_t {
-	size_t index;
-	uint32_t titanIndex;
-	int owner;
-	int typeId;
-	int selection_index;
-	int visibility_flags;
-	int elevation_level;
-	int flags;
-	int selection_timer;
-	int width;
-	int height;
-	int x; //pos
-	int y; //pos
-	int mainImageTitanIndex;
-};
-
-std::map<int, sprite_dump_t> sprite_dumps;
-
 struct util_functions : state_functions
 {
 	util_functions(state &st) : state_functions(st) {}
 
 #define STR(a) #a
-#define DUMP_RAW(name, value)\
-	if (is_new || !dirty_check || out.name != value) {\
-	 o.set(STR(name), val(value)); \
-	 out.name = value;\
-	 is_dirty = true;\
+#define DUMP_RAW(name, value)                        \
+	if (is_new || !dirty_check || out.name != value) \
+	{                                                \
+		o.set(STR(name), val(value));                \
+		out.name = value;                            \
+		is_dirty = true;                             \
 	}
 
-#define DUMP_VAL(name)\
-	{\
-		auto value = decode(dumping->name);\
-		if (is_new || !dirty_check || out.name != value) {\
-			o.set(STR(name), val(value));\
-			out.name = value;\
-	 		is_dirty = true;\
-		}\
+#define DUMP_VAL(name)                                   \
+	{                                                    \
+		auto value = decode(dumping->name);              \
+		if (is_new || !dirty_check || out.name != value) \
+		{                                                \
+			o.set(STR(name), val(value));                \
+			out.name = value;                            \
+			is_dirty = true;                             \
+		}                                                \
 	}
 
-#define DUMP_VAL_AS(aka, name)\
-	{\
-		auto value = decode(dumping->name);\
-		if (is_new || !dirty_check || out.aka != value) {\
-			o.set(STR(aka), val(value));\
-			out.aka = value;\
-	 		is_dirty = true;\
-		}\
+#define DUMP_VAL_AS(aka, name)                          \
+	{                                                   \
+		auto value = decode(dumping->name);             \
+		if (is_new || !dirty_check || out.aka != value) \
+		{                                               \
+			o.set(STR(aka), val(value));                \
+			out.aka = value;                            \
+			is_dirty = true;                            \
+		}                                               \
 	}
 
 #define DUMP_POS(field) o.set(STR(field), dump_pos(dumping->field))
@@ -571,7 +577,6 @@ struct util_functions : state_functions
 		}
 		return f.get_unit_id(unit).raw_value;
 	}
-
 
 	template <typename T>
 	val dump_pos(T &pos)
@@ -695,7 +700,7 @@ struct util_functions : state_functions
 		bool is_dirty = false;
 		const auto is_new = std::get<1>(unit_dumps.emplace(unit_id, unit_dump_t{}));
 		const auto in = unit_dumps.find(unit_id);
-		unit_dump_t &out  = in->second;
+		unit_dump_t &out = in->second;
 
 		//always set id
 		o.set("id", val(unit_id));
@@ -726,7 +731,9 @@ struct util_functions : state_functions
 		{
 			int remainingTrainTime = ((float)dumping->current_build_unit->remaining_build_time / (float)dumping->current_build_unit->unit_type->build_time) * 255;
 			DUMP_RAW(remainingTrainTime, remainingTrainTime);
-		} else {
+		}
+		else
+		{
 			DUMP_RAW(resourceAmount, 0);
 		}
 
@@ -755,7 +762,6 @@ struct util_functions : state_functions
 		// for debugging unit tags
 		DUMP_VAL(index);
 		DUMP_VAL(unit_id_generation);
-
 
 		// maybe?
 		// DUMP_VAL(previous_unit_type);
@@ -897,10 +903,11 @@ struct util_functions : state_functions
 		{
 			for (unit_t *u : ptr(st.player_units[owner]))
 			{
-					auto o = dump_unit(u);
-					if (std::get<1>(o)) {
-						r.set(i++, std::get<0>(o));
-					}
+				auto o = dump_unit(u);
+				if (std::get<1>(o))
+				{
+					r.set(i++, std::get<0>(o));
+				}
 			}
 		}
 		return r;
@@ -923,11 +930,11 @@ struct util_functions : state_functions
 		size_t i = 0;
 
 		auto sprites = sort_sprites();
-		for (auto & sprite: sprites)
+		for (auto &sprite : sprites)
 		{
-			r.set(i++, dump_sprite((sprite_t*)sprite.second));
+			r.set(i++, dump_sprite((sprite_t *)sprite.second));
 		}
-		
+
 		return r;
 	}
 
@@ -1166,7 +1173,6 @@ double fp8_to_double(fp8 &v)
 	return as_double;
 }
 
-
 // val lookup_unit_extended(int32_t index)
 // {
 // 	util_functions f(m->ui.st);
@@ -1270,11 +1276,7 @@ EMSCRIPTEN_BINDINGS(openbw)
 		.function("get_bullets", &util_functions::get_bullets, allow_raw_pointers())
 		.function("get_sounds", &util_functions::get_sounds);
 
-		
-
 	function("get_util_funcs", &get_util_funcs);
-
-
 }
 
 // return m->ui.st.players.at(player).controller == player_t::controller_occupied ? 1 : 0;
@@ -1287,7 +1289,7 @@ extern "C" char *get_buffer(int index)
 	{
 	case 0: //tiles + creep (t->flags & tile_t::flag_has_creep);
 		return reinterpret_cast<char *>(&m->ui.st.tiles.data()[0]);
-    default:
+	default:
 		return nullptr;
 	}
 }
@@ -1329,12 +1331,12 @@ extern "C" int counts(int player, int index)
 	// 	return m->ui.st.supply_used.at(player)[2].raw_value / 2.0;
 	case 11:
 		return 0; // @todo implement
-		// case 11:
-		// 	return std::min(m->ui.st.supply_available.at(player)[0].raw_value / 2.0, 200.0);
-		// case 11:
-		// 	return std::min(m->ui.st.supply_available.at(player)[1].raw_value / 2.0, 200.0);
-		// case 11:
-		// 	return std::min(m->ui.st.supply_available.at(player)[2].raw_value / 2.0, 200.0);
+				  // case 11:
+				  // 	return std::min(m->ui.st.supply_available.at(player)[0].raw_value / 2.0, 200.0);
+				  // case 11:
+				  // 	return std::min(m->ui.st.supply_available.at(player)[1].raw_value / 2.0, 200.0);
+				  // case 11:
+				  // 	return std::min(m->ui.st.supply_available.at(player)[2].raw_value / 2.0, 200.0);
 
 	case 12:
 		return util_functions(m->ui.st).worker_supply(player);
@@ -1380,6 +1382,7 @@ extern "C" void load_replay(const uint8_t *data, size_t len)
 	m->ui.load_replay_data(data, len);
 	any_replay_loaded = true;
 }
+#endif
 
 int main()
 {
@@ -1388,7 +1391,11 @@ int main()
 	std::chrono::high_resolution_clock clock;
 	auto start = clock.now();
 
+#ifdef EMSCRIPTEN
 	auto load_data_file = data_loading::simple_reader<data_loading::js_file_reader<>>();
+#else
+	auto load_data_file = data_loading::data_files_directory("D:\\dev\\openbw\\openbw-original\\openbw-original\\Debug\\");
+#endif
 	log("files loaded\n");
 
 	game_player player(load_data_file);
@@ -1397,39 +1404,17 @@ int main()
 
 	log("loaded in %dms\n", std::chrono::duration_cast<std::chrono::milliseconds>(clock.now() - start).count());
 
+#ifdef EMSCRIPTEN
 	::m = &m;
 	::g_m = &m;
-
-#ifdef __EMSCRIPTEN_PTHREADS__
 	MAIN_THREAD_EM_ASM({ js_load_done(); });
-#else
-	EM_ASM({ js_load_done(); });
+	emscripten_exit_with_live_runtime();
 #endif
 
-	emscripten_exit_with_live_runtime();
-	// resume_replay();
-
-	// emscripten_set_main_loop_arg([](void *ptr)
-	// 								 {
-	// 									 if (!any_replay_loaded)
-	// 										 return;
-
-	// 									 #ifdef __EMSCRIPTEN_PTHREADS__
-	// 									 	MAIN_THREAD_ASYNC_EM_ASM({ js_pre_main_loop(); });
-	// 									#else
-	// 									 	EM_ASM({ js_pre_main_loop(); });
-	// 									#endif
-
-	// 									 ((main_t *)ptr)->update();
-
-	// 									 #ifdef __EMSCRIPTEN_PTHREADS__
-	// 									 	MAIN_THREAD_ASYNC_EM_ASM({ js_post_main_loop(); });
-	// 									#else
-	// 									 	EM_ASM({ js_post_main_loop(); });
-	// 									#endif
-	// 								 },
-	// 								 &m, 0, 1);
 	::g_m = nullptr;
-
+	while (m.update())
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	}
 	return 0;
 }
