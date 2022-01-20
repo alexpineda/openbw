@@ -335,6 +335,8 @@ struct state_functions {
 	virtual void on_unit_deselect(unit_t* u) {}
 
 	virtual void on_unit_destroy(unit_t* u) {}
+	virtual void on_image_destroy(image_t* u) {}
+	virtual void on_sprite_destroy(sprite_t* u) {}
 	virtual void on_kill_unit(unit_t* u) {}
 
 	virtual void on_player_eliminated(int owner) {}
@@ -15252,6 +15254,7 @@ void update_units() {
 		image->grp = nullptr;
 		image->sprite->images.remove(*image);
 		st.images_container.push(image);
+		on_image_destroy(image);
 	}
 
 	enum {
@@ -15295,6 +15298,7 @@ void update_units() {
 		}
 		remove_sprite_from_tile_line(sprite);
 		st.sprites_container.push(sprite);
+		on_sprite_destroy(sprite);
 	}
 
 	sprite_t* create_sprite(const sprite_type_t* sprite_type, xy pos, int owner) {
