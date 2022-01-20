@@ -459,7 +459,6 @@ struct unit_dump_t {
 	int remainingTraintime;
 	int kills;
 	int order;
-	double angle;
 	int subunit;
 	int orderState;
 	int groundWeaponCooldown;
@@ -735,11 +734,11 @@ struct util_functions : state_functions
 		// DUMP_RAW(order, (int)dumping->order.order_id);
 
 		{
-			int d = direction_index(dumping->heading);
-			d -= 64;
-			if (d < 0)
-				d += 256;
-			DUMP_RAW(angle, (double)d * 3.14159265358979323846 / 128.0);
+			// int d = direction_index(dumping->heading);
+			// d -= 64;
+			// if (d < 0)
+			// 	d += 256;
+			// DUMP_RAW(angle, (double)d * 3.14159265358979323846 / 128.0);
 		}
 
 		DUMP_VAL(subunit);
