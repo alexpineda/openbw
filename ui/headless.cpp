@@ -365,7 +365,7 @@ struct unit_dump_t
 	double hp;
 	double energy;
 	double shields;
-	uint32_t spriteTitanIndex;
+	uint32_t spriteIndex;
 	int statusFlags;
 	size_t direction;
 	int resourceAmount;
@@ -395,6 +395,7 @@ struct image_dump_t
 	int y; //pos
 	int modifier;
 	int modifierData1;
+	int order;
 	size_t frameIndex;
 };
 
@@ -415,7 +416,7 @@ struct sprite_dump_t
 	int height;
 	int x; //pos
 	int y; //pos
-	int mainImageTitanIndex;
+	int mainImageIndex;
 };
 
 std::map<int, sprite_dump_t> sprite_dumps;
@@ -570,19 +571,20 @@ struct util_functions : state_functions
 		return f.get_unit_id(unit).raw_value;
 	}
 
-	std::pair<val, bool> dump_image(image_t *dumping, const bool dirty_check)
+	std::pair<val, bool> dump_image(image_t *dumping, const bool dirty_check, int order)
 	{
 		val o = val::object();
 		bool is_dirty = false;
-		const auto is_new = std::get<1>(image_dumps.emplace(dumping->titan_index, image_dump_t{}));
-		const auto in = image_dumps.find(dumping->titan_index);
+		const auto is_new = std::get<1>(image_dumps.emplace(dumping->index, image_dump_t{}));
+		const auto in = image_dumps.find(dumping->index);
 		image_dump_t &out = in->second;
 
-		o.set("titanIndex", val(dumping->titan_index));
-		DUMP_VAL(index);
+		// o.set("titanIndex", val(dumping->titan_index));
+		o.set("index", val(dumping->index));
 		DUMP_RAW(typeId, (int)dumping->image_type->id);
 		DUMP_VAL(flags);
 
+		DUMP_RAW(order, order);
 		DUMP_RAW(x, decode(dumping->offset.x));
 		DUMP_RAW(y, decode(dumping->offset.y));
 
@@ -594,15 +596,17 @@ struct util_functions : state_functions
 
 	std::pair<val, bool> dump_sprite(sprite_t *dumping, const bool dirty_check)
 	{
+
 		val o = val::object();
 		bool is_dirty = false;
-		const auto is_new = std::get<1>(sprite_dumps.emplace(dumping->titan_index, sprite_dump_t{}));
-		const auto in = sprite_dumps.find(dumping->titan_index);
+		const auto is_new = std::get<1>(sprite_dumps.emplace(dumping->index, sprite_dump_t{}));
+		const auto in = sprite_dumps.find(dumping->index);
 		sprite_dump_t &out = in->second;
 
-		o.set("titanIndex", val(dumping->titan_index));
+		// o.set("titanIndex", val(dumping->titan_index));
+		o.set("index", val(dumping->index));
 
-		DUMP_VAL(index);
+		// DUMP_VAL(index);
 		DUMP_RAW(typeId, (int)dumping->sprite_type->id);
 		DUMP_VAL(owner);
 		DUMP_VAL(selection_index);
@@ -612,21 +616,28 @@ struct util_functions : state_functions
 		DUMP_VAL(selection_timer);
 		DUMP_VAL(width);
 		DUMP_VAL(height);
-		DUMP_RAW(mainImageTitanIndex, dumping->main_image->titan_index);
+		DUMP_RAW(mainImageIndex, dumping->main_image->index);
 
 		DUMP_RAW(x, decode(dumping->position.x));
 		DUMP_RAW(y, decode(dumping->position.y));
+
+		int image_count = 0;
+		for (auto image : ptr(dumping->images))
+		{
+			image_count++;
+		}
 
 		val r = val::array();
 		size_t i = 0;
 		for (auto image : ptr(dumping->images))
 		{
-			auto img = dump_image(image, dirty_check);
+			auto img = dump_image(image, dirty_check, image_count - i);
 			if (dirty_check && !img.second)
 			{
 				continue;
 			}
 			r.set(i++, std::get<0>(img));
+			is_dirty = true;
 		}
 		o.set("images", r);
 
@@ -699,7 +710,7 @@ struct util_functions : state_functions
 		DUMP_VAL(hp);
 		DUMP_VAL(energy);
 		DUMP_VAL_AS(shields, shield_points);
-		DUMP_RAW(spriteTitanIndex, dumping->sprite->titan_index);
+		DUMP_RAW(spriteIndex, dumping->sprite->index);
 		DUMP_VAL_AS(statusFlags, status_flags);
 		DUMP_RAW(direction, direction_index(dumping->heading));
 
@@ -913,6 +924,16 @@ struct util_functions : state_functions
 
 	auto get_sprites(const bool dirty_check = true)
 	{
+		for (auto &i : m->ui.deleted_sprites)
+		{
+			sprite_dumps.erase(i);
+		}
+
+		for (auto &i : m->ui.deleted_images)
+		{
+			image_dumps.erase(i);
+		}
+
 		val r = val::array();
 		int i = 0;
 
@@ -1022,6 +1043,30 @@ struct util_functions : state_functions
 				r.set(i++, o);
 			}
 		}
+		return r;
+	}
+
+	auto get_deleted_sprites()
+	{
+		val r = val::array();
+		size_t i = 0;
+		for (auto &id : m->ui.deleted_sprites)
+		{
+			r.set(i++, val(id));
+		}
+		m->ui.deleted_sprites.clear();
+		return r;
+	}
+
+	auto get_deleted_images()
+	{
+		val r = val::array();
+		size_t i = 0;
+		for (auto &id : m->ui.deleted_images)
+		{
+			r.set(i++, val(id));
+		}
+		m->ui.deleted_images.clear();
 		return r;
 	}
 	// std::vector<unitFrameData> units;
@@ -1266,7 +1311,9 @@ EMSCRIPTEN_BINDINGS(openbw)
 		.function("get_sprites", &util_functions::get_sprites)
 		.function("get_images", &util_functions::get_images)
 		.function("get_bullets", &util_functions::get_bullets, allow_raw_pointers())
-		.function("get_sounds", &util_functions::get_sounds);
+		.function("get_sounds", &util_functions::get_sounds)
+		.function("get_deleted_sprites", &util_functions::get_deleted_sprites)
+		.function("get_deleted_images", &util_functions::get_deleted_images);
 
 	function("get_util_funcs", &get_util_funcs);
 }

@@ -63,6 +63,8 @@ namespace bwgame
 		action_state current_action_state;
 		std::array<apm_t, 12> apm;
 		std::vector<played_sound_t> played_sounds;
+		std::vector<int> deleted_images;
+		std::vector<int> deleted_sprites;
 
 		titan_replay_functions(game_player player) : replay_functions(player.st(), current_action_state, current_replay_state), player(std::move(player))
 		{
@@ -88,6 +90,16 @@ namespace bwgame
 			apm.at(owner).add_action(st.current_frame);
 		}
 
+		virtual void on_image_destroy(image_t *image) override
+		{
+			deleted_images.push_back(image->index);
+		}
+
+		virtual void on_sprite_destroy(sprite_t *sprite) override
+		{
+			deleted_sprites.push_back(sprite->index);
+		}
+
 		fp8 game_speed = fp8::integer(1);
 
 		std::chrono::high_resolution_clock clock;
@@ -111,16 +123,19 @@ namespace bwgame
 			auto *a = filename.c_str();
 			auto *b = (void (*)(void *, uint8_t *, size_t))f;
 			auto *c = uptr.release();
-			
-			#ifdef __EMSCRIPTEN_PTHREADS__
-				MAIN_THREAD_EM_ASM({ js_download_file($0, $1, $2); }, a, b, c);
-			#else
-				EM_ASM({ js_download_file($0, $1, $2); }, a, b, c);
-			#endif
+
+#ifdef __EMSCRIPTEN_PTHREADS__
+			MAIN_THREAD_EM_ASM({ js_download_file($0, $1, $2); }, a, b, c);
+#else
+			EM_ASM({ js_download_file($0, $1, $2); }, a, b, c);
+#endif
 		}
 
 		void reset()
 		{
+			deleted_images.clear();
+			deleted_sprites.clear();
+
 			apm = {};
 			auto &game = *st.game;
 			st = state();
