@@ -1,6 +1,5 @@
 @ECHO OFF
 set OPENBW_DIR=./
-set BWAPI_DIR=../bwapi
 
 set OPTIMIZATION=-O3
 set PTHREAD=-pthread -s PROXY_TO_PTHREAD
@@ -22,6 +21,3 @@ em++ %BUILD_ARGS% -s EXPORTED_RUNTIME_METHODS="['callMain', 'ALLOC_NORMAL', 'all
 REm MINIMAL_RUNTIME 
 
 REM browserify -s sidegrade downgrade-replay/src/index.js -o bundle.js
-
-rundll32 user32.dll,MessageBeep
-rundll32 user32.dll,MessageBeep
