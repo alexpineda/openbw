@@ -1,10 +1,13 @@
 
-// based on openbw/gfxtest.cpp
-
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
 #endif
 
+#ifdef TITAN_WRITEGIF
+#include "GifEncoder.h"
+#endif
+
+//#include "ui.h"
 #include "headless_state.h"
 #include "common.h"
 #include "bwgame.h"
@@ -19,6 +22,10 @@ using namespace bwgame;
 using ui::log;
 
 FILE *log_file = nullptr;
+
+#ifdef TITAN_WRITEGIF
+GifEncoder gifEncoder;
+#endif
 
 namespace bwgame
 {
@@ -84,6 +91,8 @@ struct main_t
 	bool update()
 	{
 		ui.played_sounds.clear();
+		ui.deleted_images.clear();
+		ui.deleted_sprites.clear();
 
 		auto now = clock.now();
 
@@ -191,7 +200,55 @@ struct main_t
 			}
 		}
 
-		//printf("sounds after loop %d\n", (int)ui.played_sounds.size());
+		ui.update();
+
+		
+#ifdef TITAN_WRITEGIF
+		if (!ui.is_done()) {
+			int w;
+			int h;
+			uint32_t* px;
+			std::tie(w, h, px) = ui.get_rgba_buffer();
+			int delay = 20;
+			
+			gifEncoder.push(GifEncoder::PIXEL_FORMAT_RGBA, (uint8_t*)px, w, h, delay);
+
+			if (!screen_show_unit && screen_show_unit_cooldown == 0) {
+				for (size_t i = 7; i != 0;) {
+					--i;
+					for (unit_t* u : ptr(ui.st.player_units[i])) {
+						if (!ui.unit_visble_on_minimap(u)) continue;
+						if (u->air_weapon_cooldown || u->ground_weapon_cooldown) {
+							screen_show_unit = u;
+							screen_show_unit_cooldown = 5 + std::rand() % 5;
+						}
+					}
+				}
+			}
+			if (screen_show_unit) {
+				unit_t* u = screen_show_unit;
+				if (screen_show_unit_cooldown) {
+					ui.screen_pos = xy(u->position.x - ui.view_width / 2,  u->position.y - ui.view_height / 2);
+					ui.draw_ui_minimap = false;
+				}
+				else {
+					ui.draw_ui_minimap = true;
+					screen_show_unit = NULL;
+					screen_show_unit_cooldown = 10 + std::rand() % 5;
+				}
+			}
+			if (screen_show_unit_cooldown) {
+				screen_show_unit_cooldown--;
+			}
+		}
+		else {
+			log("saving gif");
+			if (!gifEncoder.close()) {
+				fprintf(stderr, "Error close gif file\n");
+			}
+			return false;
+		}
+#endif
 
 		return true;
 	}
@@ -324,9 +381,7 @@ namespace bwgame
 			void get_bytes(uint8_t *dst, size_t n)
 			{
 
-#ifdef EMSCRIPTEN
 				EM_ASM({ js_callbacks.js_read_data($0, $1, $2, $3); }, index, dst, file_pointer, n);
-#endif
 				file_pointer += n;
 			}
 
@@ -341,9 +396,7 @@ namespace bwgame
 
 			size_t size()
 			{
-#ifdef EMSCRIPTEN
 				return EM_ASM_INT({ return js_callbacks.js_file_size($0); }, index);
-#endif
 			}
 		};
 
@@ -644,42 +697,6 @@ struct util_functions : state_functions
 
 		return std::make_pair(o, is_dirty);
 	}
-
-	// val dump_thingy(thingy_t *dumping)
-	// {
-	// 	val o = val::object();
-	// 	DUMP_VAL(hp);
-	// 	o.set("sprite", dump_sprite(dumping->sprite));
-	// 	return o;
-	// }
-
-	// val dump_target(target_t *dumping)
-	// {
-	// 	val o = val::object();
-	// 	DUMP_POS(pos);
-	// 	DUMP_VAL(unit);
-	// 	return o;
-	// }
-
-	// val dump_flingy(flingy_t *dumping)
-	// {
-	// 	val o = val::object();
-	// 	DUMP_VAL(index);
-	// 	o.set("move_target", dump_target(&dumping->move_target));
-	// 	DUMP_POS(next_movement_waypoint);
-	// 	DUMP_POS(next_target_waypoint);
-	// 	DUMP_VAL(movement_flags);
-	// 	DUMP_POS(position);
-	// 	DUMP_POS(exact_position);
-	// 	DUMP_VAL(flingy_top_speed);
-	// 	DUMP_VAL(current_speed);
-	// 	DUMP_VAL(next_speed);
-	// 	DUMP_POS(velocity);
-	// 	DUMP_VAL(flingy_acceleration);
-	// 	o.set("sprite", dump_sprite(dumping->sprite));
-	// 	o.set("_thingy_t", dump_thingy(dumping));
-	// 	return o;
-	// }
 
 	val dump_sound(played_sound_t *dumping)
 	{
@@ -1055,7 +1072,6 @@ struct util_functions : state_functions
 		{
 			r.set(i++, val(id));
 		}
-		m->ui.deleted_sprites.clear();
 		return r;
 	}
 
@@ -1067,7 +1083,6 @@ struct util_functions : state_functions
 		{
 			r.set(i++, val(id));
 		}
-		m->ui.deleted_images.clear();
 		return r;
 	}
 	// std::vector<unitFrameData> units;
@@ -1196,31 +1211,6 @@ struct util_functions : state_functions
 };
 
 optional<util_functions> m_util_funcs;
-
-double direction_t_to_double(direction_t &v)
-{
-	double as_double = v.raw_value;
-	as_double /= (1 << v.fractional_bits);
-	return as_double;
-}
-
-double fp8_to_double(fp8 &v)
-{
-	double as_double = v.raw_value;
-	as_double /= (1 << v.fractional_bits);
-	return as_double;
-}
-
-// val lookup_unit_extended(int32_t index)
-// {
-// 	util_functions f(m->ui.st);
-// 	unit_t *u = f.get_unit(unit_id(index));
-// 	if (!u)
-// 	{
-// 		return val::null();
-// 	}
-// 	return Dump::dump_unit(u);
-// }
 
 util_functions &get_util_funcs()
 {
@@ -1424,6 +1414,8 @@ int main()
 {
 	using namespace bwgame;
 
+	log("openbw-build: 30\n");
+
 	std::chrono::high_resolution_clock clock;
 	auto start = clock.now();
 
@@ -1437,6 +1429,14 @@ int main()
 	game_player player(load_data_file);
 
 	main_t m(std::move(player));
+
+	// m.ui.load_all_image_data(load_data_file);
+
+	// ui.load_data_file = [&](a_vector<uint8_t> &data, a_string filename) {
+	// 	load_data_file(data, std::move(filename));
+	// };
+
+	// ui.init();
 
 	log("loaded in %dms\n", std::chrono::duration_cast<std::chrono::milliseconds>(clock.now() - start).count());
 

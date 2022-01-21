@@ -286,18 +286,14 @@ const filenameFromPath = function (str) {
 }
 
 const js_file_index = ($0) => {
-  console.log(`file index: ${openBw.UTF8ToString($0)}`);
   var filename = filenameFromPath(openBw.UTF8ToString($0));
 
   var index = files.findIndex(item => 
     filename.toLowerCase() === item.name.toLowerCase());
-  console.log(filename, index)
   return index >= 0 ? index : 9999;
 }
 
 const js_file_size = (index) => {
-  console.log(`file size: ${index} ${files[index].size}`);
-  console.log(`file size: ${index} ${js_read_buffers[index].byteLength}`);
   return files[index].size;
 };
 

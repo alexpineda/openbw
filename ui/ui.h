@@ -520,49 +520,6 @@ namespace bwgame
 		}
 	}
 
-	struct apm_t
-	{
-		a_deque<int> history;
-		int current_apm = 0;
-		int last_frame_div = 0;
-		static const int resolution = 1;
-		void add_action(int frame)
-		{
-			if (!history.empty() && frame / resolution == last_frame_div)
-			{
-				++history.back();
-			}
-			else
-			{
-				if (history.size() >= 10 * 1000 / 42 / resolution)
-					history.pop_front();
-				history.push_back(1);
-				last_frame_div = frame / 12;
-			}
-		}
-		void update(int frame)
-		{
-			if (history.empty() || frame / resolution != last_frame_div)
-			{
-				if (history.size() >= 10 * 1000 / 42 / resolution)
-					history.pop_front();
-				history.push_back(0);
-				last_frame_div = frame / resolution;
-			}
-			if (frame % resolution)
-				return;
-			if (history.size() == 0)
-			{
-				current_apm = 0;
-				return;
-			}
-			int sum = 0;
-			for (auto &v : history)
-				sum += v;
-			current_apm = (int)(sum * ((int64_t)256 * 60 * 1000 / 42 / resolution) / history.size() / 256);
-		}
-	};
-
 	struct ui_util_functions : replay_functions
 	{
 
@@ -731,7 +688,7 @@ namespace bwgame
 		image_data img;
 		tileset_image_data tileset_img;
 		native_window::window wnd;
-		bool create_window = false;
+		bool create_window = true;
 		bool draw_ui_elements = true;
 		bool draw_ui_minimap = true;
 

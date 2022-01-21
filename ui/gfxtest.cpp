@@ -8,6 +8,7 @@
 #endif
 
 #include "ui.h"
+
 #include "common.h"
 #include "bwgame.h"
 #include "replay.h"
@@ -1239,7 +1240,6 @@ int main()
 	screen_width = ui.game_st.map_tile_width+4;
 	screen_height = ui.game_st.map_tile_height+4;
 	ui.create_window = true;
-	ui.draw_ui_elements = false;
 	ui.game_speed = fp8::integer(8000);
 #endif
 
