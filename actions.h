@@ -1088,11 +1088,11 @@ struct action_functions: state_functions {
 	}
 
 	template<typename reader_T>
-	bool read_action_order(int owner, reader_T&& r, bool scr = false) {
+	bool read_action_order(int owner, reader_T&& r, bool is_scr = false) {
 		int x = r.template get<int16_t>();
 		int y = r.template get<int16_t>();
 		unit_t* target = get_unit(unit_id(r.template get<uint16_t>()));
-		if (scr) {
+		if (is_scr) {
 			r.template get<uint16_t>(); // throw away unknown
 		}
 		UnitTypes target_unit_type_id = (UnitTypes)r.template get<uint16_t>();
@@ -1129,8 +1129,11 @@ struct action_functions: state_functions {
 	}
 
 	template<typename reader_T>
-	bool read_action_unload(int owner, reader_T&& r) {
+	bool read_action_unload(int owner, reader_T&& r, bool is_scr) {
 		unit_t* target = get_unit(unit_id(r.template get<uint16_t>()));
+		if (is_scr) {
+			r.template get<uint16_t>();
+		}
 		return action_unload(owner, target);
 	}
 
@@ -1421,7 +1424,7 @@ struct action_functions: state_functions {
 			return read_action_unload_all(owner, r);
 		case 41:
 		case 98:
-			return read_action_unload(owner, r);
+			return read_action_unload(owner, r, action_id == 98);
 		case 42:
 			return read_action_morph_archon(owner, r);
 		case 43:

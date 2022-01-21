@@ -739,7 +739,7 @@ struct util_functions : state_functions
 		}
 
 		DUMP_VAL_AS(kills, kill_count);
-		// DUMP_RAW(order, (int)dumping->order.order_id);
+		DUMP_RAW(order, (int)dumping->order_type->id);
 
 		{
 			// int d = direction_index(dumping->heading);

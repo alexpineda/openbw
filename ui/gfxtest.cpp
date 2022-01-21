@@ -1227,7 +1227,8 @@ int main()
 	ui.init();
 
 #ifndef EMSCRIPTEN
-	ui.load_replay_file("C:\\Users\\alexp\\Downloads\\25555-Star_kras-PvT.rep");
+	//ui.load_replay_file("C:\\Users\\alexp\\Downloads\\25555-Star_kras-PvT.rep");
+	ui.load_replay_file("D:\\last_replay.rep");
 	//ui.load_replay_file("C:\\Users\\alexp\\Downloads\\gol-25555-Star_kras-PvT.rep");
 	//ui.load_replay_file("C:\\Users\\alexp\\Downloads\\gol-test.rep");
 	//gol - ctq0uQBIaxiMnxvOogSC6CAzy3R1WXnzZ7 - uDDVL0sI.rep
