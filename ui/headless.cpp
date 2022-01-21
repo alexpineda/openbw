@@ -582,7 +582,6 @@ struct util_functions : state_functions
 		const auto in = image_dumps.find(dumping->index);
 		image_dump_t &out = in->second;
 
-		// o.set("titanIndex", val(dumping->titan_index));
 		o.set("index", val(dumping->index));
 		DUMP_RAW(typeId, (int)dumping->image_type->id);
 		DUMP_VAL(flags);
@@ -606,7 +605,6 @@ struct util_functions : state_functions
 		const auto in = sprite_dumps.find(dumping->index);
 		sprite_dump_t &out = in->second;
 
-		// o.set("titanIndex", val(dumping->titan_index));
 		o.set("index", val(dumping->index));
 
 		// DUMP_VAL(index);

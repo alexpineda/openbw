@@ -66,7 +66,6 @@ namespace bwgame
 		intrusive_list<T, default_link_f> free_list;
 		size_t size = 0;
 		size_t max_size = init_max_size;
-		uint32_t titan_index_counter;
 
 		object_container() {}
 
@@ -80,7 +79,6 @@ namespace bwgame
 			free_list.clear();
 			size = 0;
 			max_size = new_max_size;
-			titan_index_counter = 0;
 		}
 
 		T *get(size_t index, bool add_new_to_free = true)
@@ -154,7 +152,6 @@ namespace bwgame
 		}
 		void pop()
 		{
-			titan_index_counter++;
 			free_list.pop_front();
 		}
 		void push(T *obj)
@@ -487,7 +484,6 @@ namespace bwgame
 	struct link_base
 	{
 		std::pair<link_base *, link_base *> link;
-		uint32_t titan_index;
 	};
 
 	struct iscript_state_t

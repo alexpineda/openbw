@@ -14493,7 +14493,6 @@ void update_units() {
 			return nullptr;
 		}
 		st.bullets_container.pop();
-		b->titan_index = st.bullets_container.titan_index_counter;
 
 		++st.active_bullets_size;
 		bw_insert_list(st.active_bullets, *b);
@@ -15269,7 +15268,6 @@ void update_units() {
 		image_t* image = st.images_container.top();
 		if (!image) return nullptr;
 		st.images_container.pop();
-		image->titan_index = st.images_container.titan_index_counter;
 
 		if (sprite->images.empty()) {
 			sprite->main_image = image;
@@ -15307,7 +15305,6 @@ void update_units() {
 		sprite_t* sprite = st.sprites_container.top();
 		if (!sprite) return nullptr;
 		st.sprites_container.pop();
-		sprite->titan_index = st.sprites_container.titan_index_counter;
 
 		auto initialize_sprite = [&]() {
 			if ((size_t)pos.x >= game_st.map_width || (size_t)pos.y >= game_st.map_height) return false;
