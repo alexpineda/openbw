@@ -50,7 +50,7 @@ namespace bwgame
 		{
 #ifdef EMSCRIPTEN
 			const char *p = str.c_str();
-			EM_ASM_({ js_callbacks.js_fatal_error($0); }, p);
+			MAIN_THREAD_EM_ASM({ js_callbacks.js_fatal_error($0); }, p);
 #endif
 			log("fatal error: %s\n", str);
 			std::terminate();
@@ -268,7 +268,7 @@ void out_of_memory()
 	printf("out of memory :(\n");
 #ifdef EMSCRIPTEN
 	const char *p = "out of memory :(";
-	EM_ASM_({ js_callbacks.js_fatal_error($0); }, p);
+	MAIN_THREAD_EM_ASM({ js_callbacks.js_fatal_error($0); }, p);
 #endif
 	throw std::bad_alloc();
 }
@@ -365,7 +365,7 @@ namespace bwgame
 
 			int get_file_index(a_string filename)
 			{
-				return EM_ASM_INT({ return js_callbacks.js_file_index($0); }, filename.data());
+				return MAIN_THREAD_EM_ASM_INT({ return js_callbacks.js_file_index($0); }, filename.data());
 			}
 
 			void open(a_string filename)
@@ -381,7 +381,7 @@ namespace bwgame
 			void get_bytes(uint8_t *dst, size_t n)
 			{
 
-				EM_ASM({ js_callbacks.js_read_data($0, $1, $2, $3); }, index, dst, file_pointer, n);
+				MAIN_THREAD_EM_ASM({ js_callbacks.js_read_data($0, $1, $2, $3); }, index, dst, file_pointer, n);
 				file_pointer += n;
 			}
 
@@ -396,7 +396,7 @@ namespace bwgame
 
 			size_t size()
 			{
-				return EM_ASM_INT({ return js_callbacks.js_file_size($0); }, index);
+				return MAIN_THREAD_EM_ASM_INT({ return js_callbacks.js_file_size($0); }, index);
 			}
 		};
 
@@ -1083,7 +1083,7 @@ struct util_functions : state_functions
 		{
 			r.set(i++, val(id));
 		}
-		return r;
+	return r;
 	}
 
 	auto count_units()
@@ -1284,7 +1284,7 @@ extern "C" int next_frame_exact()
 	m->ui.next_frame();
 
 #ifdef EMSCRIPTEN
-	EM_ASM({ js_callbacks.js_post_main_loop(); });
+	MAIN_THREAD_EM_ASM({ js_callbacks.js_post_main_loop(); });
 #endif
 
 	return m->ui.st.current_frame;
@@ -1295,7 +1295,7 @@ extern "C" int next_frame()
 	m->update();
 
 #ifdef EMSCRIPTEN
-	EM_ASM({ js_callbacks.js_post_main_loop(); });
+	MAIN_THREAD_EM_ASM({ js_callbacks.js_post_main_loop(); });
 #endif
 
 	return m->ui.st.current_frame;
