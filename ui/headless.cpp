@@ -93,6 +93,7 @@ struct main_t
 		ui.played_sounds.clear();
 		ui.deleted_images.clear();
 		ui.deleted_sprites.clear();
+		ui.deleted_units.clear();
 
 		auto now = clock.now();
 
@@ -714,8 +715,8 @@ struct util_functions : state_functions
 
 		const int unit_id = decode(dumping);
 		bool is_dirty = false;
-		const auto is_new = std::get<1>(unit_dumps.emplace(unit_id, unit_dump_t{}));
-		const auto in = unit_dumps.find(unit_id);
+		const auto is_new = std::get<1>(unit_dumps.emplace(dumping->index, unit_dump_t{}));
+		const auto in = unit_dumps.find(dumping->index);
 		unit_dump_t &out = in->second;
 
 		//always set id
@@ -913,6 +914,11 @@ struct util_functions : state_functions
 
 	auto get_units(const bool dirty_check = true)
 	{
+		for (auto &i : m->ui.deleted_units)
+		{
+			unit_dumps.erase(i);
+		}
+
 		val r = val::array();
 		size_t i = 0;
 		for (int owner = 0; owner < 12; owner++)

@@ -20,6 +20,7 @@ namespace bwgame
 		std::vector<played_sound_t> played_sounds;
 		std::vector<int> deleted_images;
 		std::vector<int> deleted_sprites;
+		std::vector<int> deleted_units;
 
 		titan_replay_functions(game_player player) : ui_functions(std::move(player))
 		{
@@ -55,6 +56,11 @@ namespace bwgame
 			deleted_sprites.push_back(sprite->index);
 		}
 
+		virtual void on_kill_unit(unit_t *u) override
+		{
+			deleted_units.push_back(u->index);
+		}
+
 		void update() {}
 
 		fp8 game_speed = fp8::integer(1);
@@ -63,6 +69,7 @@ namespace bwgame
 		{
 			deleted_images.clear();
 			deleted_sprites.clear();
+			deleted_units.clear();
 			played_sounds.clear();
 
 			apm = {};
