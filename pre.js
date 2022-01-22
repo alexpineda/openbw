@@ -1,5 +1,6 @@
 
 let js_callbacks = {}
+let _scriptDir  = "./titan.js";
 Module.setupCallbacks = (callbacks = {}) => {
     console.log("setup Callbacks");
     js_callbacks = {

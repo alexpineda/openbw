@@ -1,5 +1,5 @@
 #include "common.h"
-#include "ui.h"
+#include "drawing.h"
 #include "../bwgame.h"
 #include "../replay.h"
 

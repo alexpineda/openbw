@@ -7,7 +7,7 @@
 #include "GifEncoder.h"
 #endif
 
-#include "ui.h"
+#include "drawing.h"
 
 #include "common.h"
 #include "bwgame.h"

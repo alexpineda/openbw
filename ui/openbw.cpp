@@ -7,8 +7,7 @@
 #include "GifEncoder.h"
 #endif
 
-//#include "ui.h"
-#include "headless_state.h"
+#include "boop.h"
 #include "common.h"
 #include "bwgame.h"
 #include "replay.h"

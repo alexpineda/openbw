@@ -4,7 +4,7 @@
 #include <emscripten.h>
 #endif
 
-#include "headless_state.h"
+#include "boop.h"
 #include "common.h"
 #include "bwgame.h"
 #include "replay.h"
