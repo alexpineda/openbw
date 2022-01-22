@@ -61,8 +61,6 @@ namespace bwgame
 			deleted_units.push_back(u->index);
 		}
 
-		void update() {}
-
 		fp8 game_speed = fp8::integer(1);
 
 		void reset()

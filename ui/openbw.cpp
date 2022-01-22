@@ -200,7 +200,9 @@ struct main_t
 			}
 		}
 
+#ifndef TITAN_HEADLESS
 		ui.update();
+#endif
 
 		
 #ifdef TITAN_WRITEGIF
@@ -351,6 +353,7 @@ namespace bwgame
 			}
 		};
 
+#ifdef EMSCRIPTEN
 		template <bool default_little_endian = true>
 		struct js_file_reader
 		{
@@ -399,6 +402,7 @@ namespace bwgame
 				return MAIN_THREAD_EM_ASM_INT({ return js_callbacks.js_file_size($0); }, index);
 			}
 		};
+#endif
 
 	} // namespace data_loading
 } // namespace bwgame
@@ -481,6 +485,23 @@ void reset_dumps()
 	image_dumps.clear();
 }
 
+extern "C" void ui_resize(int width, int height) {
+	if (width == current_width && height == current_height)
+		return;
+	if (width <= 0 || height <= 0)
+		return;
+	current_width = width;
+	current_height = height;
+	if (!m)
+		return;
+	m->ui.window_surface.reset();
+	m->ui.indexed_surface.reset();
+	m->ui.rgba_surface.reset();
+	m->ui.wnd.destroy();
+	m->ui.wnd.create("test", 0, 0, width, height);
+	m->ui.resize(width, height);
+}
+
 extern "C" double replay_get_value(int index)
 {
 	switch (index)
@@ -534,6 +555,8 @@ extern "C" void replay_set_value(int index, double value)
 		break;
 	}
 }
+
+#ifdef EMSCRIPTEN
 
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
@@ -1313,34 +1336,70 @@ extern "C" void load_replay(const uint8_t *data, size_t len)
 	m->ui.load_replay_data(data, len);
 	any_replay_loaded = true;
 }
+#endif
 
 int main()
 {
 	using namespace bwgame;
 
-	log("openbw-build: 30\n");
+	log("openbw-build: 31\n");
 
 	std::chrono::high_resolution_clock clock;
 	auto start = clock.now();
+
+	size_t screen_width = 1280;
+	size_t screen_height = 800;
 
 #ifdef EMSCRIPTEN
 	auto load_data_file = data_loading::simple_reader<data_loading::js_file_reader<>>();
 #else
 	auto load_data_file = data_loading::data_files_directory("D:\\dev\\openbw\\openbw-original\\openbw-original\\Debug\\");
 #endif
-	log("files loaded\n");
+	
+#ifdef TITAN_WRITEGIF
+	screen_width = ui.game_st.map_tile_width+4;
+	screen_height = ui.game_st.map_tile_height+4;
+	ui.create_window = true;
+	ui.game_speed = fp8::integer(8000);
+	int numFrames = ui.replay_st.end_frame / 8000;
+	int preAllocSize = screen_width * screen_height * 3 * numFrames;
+
+	if (!gifEncoder.open("test.gif", screen_width, screen_height, 30, true, 0, 0)) {
+		log("FAILED");
+		fprintf(stderr, "Error open gif file\n");
+		return 1;
+	}
+#endif // TITAN_WRITEGIF
 
 	game_player player(load_data_file);
 
 	main_t m(std::move(player));
 
-	// m.ui.load_all_image_data(load_data_file);
+#ifndef TITAN_HEADLESS
+	auto &ui = m.ui;
+	m.ui.load_all_image_data(load_data_file);
 
-	// ui.load_data_file = [&](a_vector<uint8_t> &data, a_string filename) {
-	// 	load_data_file(data, std::move(filename));
-	// };
+	ui.load_data_file = [&](a_vector<uint8_t> &data, a_string filename) {
+		load_data_file(data, std::move(filename));
+	};
 
-	// ui.init();
+	ui.init();
+
+#ifndef EMSCRIPTEN
+	ui.load_replay_file("D:\\last_replay.rep");
+#endif
+
+	if (ui.create_window) {
+		auto& wnd = ui.wnd;
+		wnd.create("Titan Reactor / OpenBW", 0, 0, screen_width, screen_height);
+	}
+
+	ui.resize(screen_width, screen_height);
+
+	ui.screen_pos = {(int)ui.game_st.map_width / 2 - (int)screen_width / 2, (int)ui.game_st.map_height / 2 - (int)screen_height / 2};
+
+	ui.set_image_data();
+#endif
 
 	log("loaded in %dms\n", std::chrono::duration_cast<std::chrono::milliseconds>(clock.now() - start).count());
 
@@ -1349,12 +1408,14 @@ int main()
 	::g_m = &m;
 	MAIN_THREAD_EM_ASM({ js_callbacks.js_load_done(); });
 	emscripten_exit_with_live_runtime();
-#endif
-
-	::g_m = nullptr;
+#else
+	::g_m = &m;
 	while (m.update())
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(20));
 	}
+#endif
+	::g_m = nullptr;
+
 	return 0;
 }
