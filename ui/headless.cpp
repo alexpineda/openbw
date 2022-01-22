@@ -1085,47 +1085,6 @@ struct util_functions : state_functions
 		}
 		return r;
 	}
-	// std::vector<unitFrameData> units;
-
-	// auto get_units()
-	// {
-	// 	units.clear();
-	// 	for (int owner = 0; owner < 12; owner++)
-	// 	{
-	// 		for (unit_t *u : ptr(st.player_units[owner]))
-	// 		{
-	// 			unitFrameData unitData;
-
-	// 			unitData.id = get_unit_id(u).raw_value;
-	// 			unitData.owner = u->owner;
-	// 			unitData.typeId = (short int)u->unit_type->id;
-	// 			unitData.hp = (short int)u->hp.integer_part();
-	// 			unitData.energy = (short int)u->energy.integer_part();
-	// 			unitData.shields = (short int)u->shield_points.integer_part();
-	// 			unitData.sprite_index = u->sprite->index;
-	// 			unitData.status_flags = u->status_flags;
-	// 			unitData.x = u->position.x;
-	// 			unitData.y = u->position.y;
-	// 			unitData.direction = direction_index(u->heading);
-	// 			unitData.remainingBuildTime = u->remaining_build_time;
-
-	// 			if (u_completed(u) && ut_resource(u->unit_type))
-	// 			{
-	// 				unitData.remainingBuildTime = u->building.resource.resource_count;
-	// 			}
-
-	// 			unitData.order = (unsigned char)u->order_type->id;
-	// 			if (u->current_build_unit)
-	// 			{
-	// 				unitData.remainingTrainTime = ((float)u->current_build_unit->remaining_build_time / (float)u->current_build_unit->unit_type->build_time) * 255;
-	// 			}
-	// 			unitData.kills = u->kill_count;
-
-	// 			units.push_back(unitData);
-	// 		}
-	// 	}
-	// 	return units;
-	// }
 
 	auto count_units()
 	{
@@ -1218,63 +1177,6 @@ util_functions &get_util_funcs()
 	return *m_util_funcs;
 }
 
-const unit_type_t *unit_t_unit_type(const unit_t *u)
-{
-	return u->unit_type;
-}
-const unit_type_t *unit_t_build_type(const unit_t *u)
-{
-	if (u->build_queue.empty())
-		return nullptr;
-	return u->build_queue.front();
-}
-
-const sprite_t *thingy_t_sprite(const thingy_t *t)
-{
-	return t->sprite;
-}
-
-const int_fast32_t thingy_t_hp(const thingy_t *t)
-{
-	return t->hp.integer_part();
-}
-
-const image_t *sprite_t_main_image(const sprite_t *s)
-{
-	return s->main_image;
-}
-
-const int image_t_image_type(const image_t *i)
-{
-	return (int)i->image_type->id;
-}
-
-const iscript_state_t image_t_iscript_state(const image_t *i)
-{
-	return i->iscript_state;
-}
-
-const auto sprite_t_images(const sprite_t *s)
-{
-	val r = val::array();
-	size_t i = 0;
-	for (const image_t *u : ptr(s->images))
-	{
-		r.set(i++, u);
-	}
-	return r;
-}
-
-int unit_type_t_id(const unit_type_t &ut)
-{
-	return (int)ut.id;
-}
-
-int iscript_state_t_current_script(const iscript_state_t *i)
-{
-	return (int)i->current_script->id;
-}
-
 std::string getExceptionMessage(int exceptionPtr)
 {
 	return std::string(reinterpret_cast<std::exception *>(exceptionPtr)->what());
@@ -1285,9 +1187,6 @@ EMSCRIPTEN_BINDINGS(openbw)
 	register_vector<js_unit>("vector_js_unit");
 
 	function("getExceptionMessage", &getExceptionMessage);
-
-	// function("lookup_unit_extended", &lookup_unit_extended);
-	// function("get_units", &util_functions::get_units);
 
 	class_<util_functions>("util_functions")
 		.function("worker_supply", &util_functions::worker_supply)
