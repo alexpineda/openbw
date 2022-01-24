@@ -1,12 +1,9 @@
 
 let js_callbacks = {}
-let _scriptDir  = "./titan.js";
+// let _scriptDir  = "./titan.js";
 Module.setupCallbacks = (callbacks = {}) => {
     console.log("setup Callbacks");
-    js_callbacks = {
-        ...js_callbacks,
-        ...callbacks
-    }
+    Object.assign(js_callbacks, callbacks);
 
     // js_fatal_error,
     //     js_pre_main_loop,
