@@ -21,6 +21,7 @@ namespace bwgame
 		std::vector<int> deleted_images;
 		std::vector<int> deleted_sprites;
 		std::vector<int> deleted_units;
+		std::vector<uint8_t> fow;
 
 		titan_replay_functions(game_player player) : ui_functions(std::move(player))
 		{
@@ -69,6 +70,7 @@ namespace bwgame
 			deleted_sprites.clear();
 			deleted_units.clear();
 			played_sounds.clear();
+			fow.clear();
 
 			apm = {};
 			auto &game = *st.game;

@@ -12,9 +12,11 @@
 #include "bwgame.h"
 #include "replay.h"
 #include "util.h"
+#include "titan_util.h"
 
 #include <chrono>
 #include <thread>
+#include <algorithm>
 
 using namespace bwgame;
 
@@ -81,14 +83,27 @@ struct main_t
 	unit_t *screen_show_unit = NULL;
 	int screen_show_unit_cooldown = 0;
 
+	std::map<int, image_dump_t> image_dumps;
+	std::map<int, sprite_dump_t> sprite_dumps;
+	std::map<int, unit_dump_t> unit_dumps;
+
+	void reset_dumps()
+	{
+		unit_dumps.clear();
+		sprite_dumps.clear();
+		image_dumps.clear();
+	}
+
 	void reset()
 	{
 		saved_states.clear();
 		ui.reset();
+		reset_dumps();
 	}
 
 	bool update()
 	{
+		//@todo this may be incorrect check state save/loading
 		ui.played_sounds.clear();
 		ui.deleted_images.clear();
 		ui.deleted_sprites.clear();
@@ -204,48 +219,59 @@ struct main_t
 		ui.update();
 #endif
 
-		
 #ifdef TITAN_WRITEGIF
-		if (!ui.is_done()) {
+		if (!ui.is_done())
+		{
 			int w;
 			int h;
-			uint32_t* px;
+			uint32_t *px;
 			std::tie(w, h, px) = ui.get_rgba_buffer();
 			int delay = 20;
-			
-			gifEncoder.push(GifEncoder::PIXEL_FORMAT_RGBA, (uint8_t*)px, w, h, delay);
 
-			if (!screen_show_unit && screen_show_unit_cooldown == 0) {
-				for (size_t i = 7; i != 0;) {
+			gifEncoder.push(GifEncoder::PIXEL_FORMAT_RGBA, (uint8_t *)px, w, h, delay);
+
+			if (!screen_show_unit && screen_show_unit_cooldown == 0)
+			{
+				for (size_t i = 7; i != 0;)
+				{
 					--i;
-					for (unit_t* u : ptr(ui.st.player_units[i])) {
-						if (!ui.unit_visble_on_minimap(u)) continue;
-						if (u->air_weapon_cooldown || u->ground_weapon_cooldown) {
+					for (unit_t *u : ptr(ui.st.player_units[i]))
+					{
+						if (!ui.unit_visble_on_minimap(u))
+							continue;
+						if (u->air_weapon_cooldown || u->ground_weapon_cooldown)
+						{
 							screen_show_unit = u;
 							screen_show_unit_cooldown = 5 + std::rand() % 5;
 						}
 					}
 				}
 			}
-			if (screen_show_unit) {
-				unit_t* u = screen_show_unit;
-				if (screen_show_unit_cooldown) {
-					ui.screen_pos = xy(u->position.x - ui.view_width / 2,  u->position.y - ui.view_height / 2);
+			if (screen_show_unit)
+			{
+				unit_t *u = screen_show_unit;
+				if (screen_show_unit_cooldown)
+				{
+					ui.screen_pos = xy(u->position.x - ui.view_width / 2, u->position.y - ui.view_height / 2);
 					ui.draw_ui_minimap = false;
 				}
-				else {
+				else
+				{
 					ui.draw_ui_minimap = true;
 					screen_show_unit = NULL;
 					screen_show_unit_cooldown = 10 + std::rand() % 5;
 				}
 			}
-			if (screen_show_unit_cooldown) {
+			if (screen_show_unit_cooldown)
+			{
 				screen_show_unit_cooldown--;
 			}
 		}
-		else {
+		else
+		{
 			log("saving gif");
-			if (!gifEncoder.close()) {
+			if (!gifEncoder.close())
+			{
 				fprintf(stderr, "Error close gif file\n");
 			}
 			return false;
@@ -411,81 +437,8 @@ main_t *m;
 
 int current_width = -1;
 int current_height = -1;
-
-struct unit_dump_t
+extern "C" void ui_resize(int width, int height)
 {
-	int id;
-	int typeId;
-	int owner;
-	int x;
-	int y;
-	double hp;
-	double energy;
-	double shields;
-	uint32_t spriteIndex;
-	int statusFlags;
-	size_t direction;
-	int resourceAmount;
-	int remainingBuildtime;
-	int remainingTraintime;
-	int kills;
-	int order;
-	int subunit;
-	int orderState;
-	int groundWeaponCooldown;
-	int airWeaponCooldown;
-	int spellCooldown;
-	size_t index;
-	unsigned int unit_id_generation;
-	int remainingTrainTime;
-};
-
-std::map<int, unit_dump_t> unit_dumps;
-
-struct image_dump_t
-{
-	size_t index;
-	uint32_t titanIndex;
-	int typeId;
-	int flags;
-	int x; //pos
-	int y; //pos
-	int modifier;
-	int modifierData1;
-	int order;
-	size_t frameIndex;
-};
-
-std::map<int, image_dump_t> image_dumps;
-
-struct sprite_dump_t
-{
-	size_t index;
-	uint32_t titanIndex;
-	int owner;
-	int typeId;
-	int selection_index;
-	int visibility_flags;
-	int elevation_level;
-	int flags;
-	int selection_timer;
-	int width;
-	int height;
-	int x; //pos
-	int y; //pos
-	int mainImageIndex;
-};
-
-std::map<int, sprite_dump_t> sprite_dumps;
-
-void reset_dumps()
-{
-	unit_dumps.clear();
-	sprite_dumps.clear();
-	image_dumps.clear();
-}
-
-extern "C" void ui_resize(int width, int height) {
 	if (width == current_width && height == current_height)
 		return;
 	if (width <= 0 || height <= 0)
@@ -543,7 +496,7 @@ extern "C" void replay_set_value(int index, double value)
 			m->ui.replay_frame = 0;
 		if (m->ui.replay_frame > m->ui.replay_st.end_frame)
 			m->ui.replay_frame = m->ui.replay_st.end_frame;
-		reset_dumps();
+		m->reset_dumps();
 		break;
 	case 6:
 		m->ui.replay_frame = (int)(m->ui.replay_st.end_frame * value);
@@ -551,12 +504,12 @@ extern "C" void replay_set_value(int index, double value)
 			m->ui.replay_frame = 0;
 		if (m->ui.replay_frame > m->ui.replay_st.end_frame)
 			m->ui.replay_frame = m->ui.replay_st.end_frame;
-		reset_dumps();
+		m->reset_dumps();
 		break;
 	}
 }
 
-#ifdef EMSCRIPTEN
+// #ifdef EMSCRIPTEN
 
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
@@ -654,8 +607,8 @@ struct util_functions : state_functions
 	{
 		val o = val::object();
 		bool is_dirty = false;
-		const auto is_new = std::get<1>(image_dumps.emplace(dumping->index, image_dump_t{}));
-		const auto in = image_dumps.find(dumping->index);
+		const auto is_new = std::get<1>(m->image_dumps.emplace(dumping->index, image_dump_t{}));
+		const auto in = m->image_dumps.find(dumping->index);
 		image_dump_t &out = in->second;
 
 		o.set("index", val(dumping->index));
@@ -669,6 +622,8 @@ struct util_functions : state_functions
 		DUMP_VAL(modifier);
 		DUMP_VAL_AS(modifierData1, modifier_data1);
 		DUMP_VAL_AS(frameIndex, frame_index);
+		DUMP_VAL_AS(frameIndexOffset, frame_index_offset);
+		DUMP_VAL_AS(frameIndexBase, frame_index_base);
 		return std::make_pair(o, is_dirty);
 	}
 
@@ -677,8 +632,8 @@ struct util_functions : state_functions
 
 		val o = val::object();
 		bool is_dirty = false;
-		const auto is_new = std::get<1>(sprite_dumps.emplace(dumping->index, sprite_dump_t{}));
-		const auto in = sprite_dumps.find(dumping->index);
+		const auto is_new = std::get<1>(m->sprite_dumps.emplace(dumping->index, sprite_dump_t{}));
+		const auto in = m->sprite_dumps.find(dumping->index);
 		sprite_dump_t &out = in->second;
 
 		o.set("index", val(dumping->index));
@@ -737,8 +692,8 @@ struct util_functions : state_functions
 
 		const int unit_id = decode(dumping);
 		bool is_dirty = false;
-		const auto is_new = std::get<1>(unit_dumps.emplace(dumping->index, unit_dump_t{}));
-		const auto in = unit_dumps.find(dumping->index);
+		const auto is_new = std::get<1>(m->unit_dumps.emplace(dumping->index, unit_dump_t{}));
+		const auto in = m->unit_dumps.find(dumping->index);
 		unit_dump_t &out = in->second;
 
 		//always set id
@@ -938,7 +893,7 @@ struct util_functions : state_functions
 	{
 		for (auto &i : m->ui.deleted_units)
 		{
-			unit_dumps.erase(i);
+			m->unit_dumps.erase(i);
 		}
 
 		val r = val::array();
@@ -972,12 +927,12 @@ struct util_functions : state_functions
 	{
 		for (auto &i : m->ui.deleted_sprites)
 		{
-			sprite_dumps.erase(i);
+			m->sprite_dumps.erase(i);
 		}
 
 		for (auto &i : m->ui.deleted_images)
 		{
-			image_dumps.erase(i);
+			m->image_dumps.erase(i);
 		}
 
 		val r = val::array();
@@ -1111,7 +1066,7 @@ struct util_functions : state_functions
 		{
 			r.set(i++, val(id));
 		}
-	return r;
+		return r;
 	}
 
 	auto count_units()
@@ -1195,6 +1150,19 @@ struct util_functions : state_functions
 		}
 		return build_queue_count;
 	}
+
+	int get_fow_size()
+	{
+		if (m->ui.fow.size() != m->ui.st.tiles.size())
+		{
+			m->ui.fow.resize(m->ui.st.tiles.size());
+			for (int i = 0; i < m->ui.fow.size(); i++)
+			{
+				m->ui.fow[i] = 0;
+			}
+		}
+		return m->ui.fow.size();
+	}
 };
 
 optional<util_functions> m_util_funcs;
@@ -1246,6 +1214,8 @@ extern "C" char *get_buffer(int index)
 	{
 	case 0: //tiles + creep (t->flags & tile_t::flag_has_creep);
 		return reinterpret_cast<char *>(&m->ui.st.tiles.data()[0]);
+	case 1:
+		return reinterpret_cast<char *>(&m->ui.st.tiles.data()[0]);
 	default:
 		return nullptr;
 	}
@@ -1279,7 +1249,7 @@ extern "C" int counts(int player, int index)
 	case 9:
 		return m->ui.st.current_gas.at(player);
 	case 10:
-		return 0; // @todo implement
+		return util_functions(m->ui.st).get_fow_size();
 	// case 10:
 	// 	return m->ui.st.supply_used.at(player)[0].raw_value / 2.0;
 	// case 10:
@@ -1304,19 +1274,36 @@ extern "C" int counts(int player, int index)
 	}
 }
 
-bool any_replay_loaded = false;
-
-extern "C" int next_frame_exact()
+extern "C" uint8_t *get_fow_ptr(uint8_t player_visibility, bool instant)
 {
-	//@todo clear states
-	m->ui.next_frame();
+	int i = 0;
+	for (auto &tile : m->ui.st.tiles)
+	{
+		int v = 15;
 
-#ifdef EMSCRIPTEN
-	MAIN_THREAD_EM_ASM({ js_callbacks.js_post_main_loop(); });
-#endif
+		if (~tile.explored & player_visibility)
+		{
+			v = 55;
+		}
+		if (~tile.visible & player_visibility)
+		{
+			v = 255;
+		}
 
-	return m->ui.st.current_frame;
+		if (v > m->ui.fow[i])
+		{
+			m->ui.fow[i] = std::min(v, m->ui.fow[i] + 10);
+		}
+		else if (v < m->ui.fow[i])
+		{
+			m->ui.fow[i] = std::max(v, m->ui.fow[i] - 5);
+		}
+		i++;
+	}
+	return m->ui.fow.data();
 }
+
+bool any_replay_loaded = false;
 
 extern "C" int next_frame()
 {
@@ -1332,11 +1319,10 @@ extern "C" int next_frame()
 extern "C" void load_replay(const uint8_t *data, size_t len)
 {
 	m->reset();
-	reset_dumps();
 	m->ui.load_replay_data(data, len);
 	any_replay_loaded = true;
 }
-#endif
+// #endif
 
 int main()
 {
@@ -1355,16 +1341,17 @@ int main()
 #else
 	auto load_data_file = data_loading::data_files_directory("D:\\dev\\openbw\\openbw-original\\openbw-original\\Debug\\");
 #endif
-	
+
 #ifdef TITAN_WRITEGIF
-	screen_width = ui.game_st.map_tile_width+4;
-	screen_height = ui.game_st.map_tile_height+4;
+	screen_width = ui.game_st.map_tile_width + 4;
+	screen_height = ui.game_st.map_tile_height + 4;
 	ui.create_window = true;
 	ui.game_speed = fp8::integer(8000);
 	int numFrames = ui.replay_st.end_frame / 8000;
 	int preAllocSize = screen_width * screen_height * 3 * numFrames;
 
-	if (!gifEncoder.open("test.gif", screen_width, screen_height, 30, true, 0, 0)) {
+	if (!gifEncoder.open("test.gif", screen_width, screen_height, 30, true, 0, 0))
+	{
 		log("FAILED");
 		fprintf(stderr, "Error open gif file\n");
 		return 1;
@@ -1379,7 +1366,8 @@ int main()
 	auto &ui = m.ui;
 	m.ui.load_all_image_data(load_data_file);
 
-	ui.load_data_file = [&](a_vector<uint8_t> &data, a_string filename) {
+	ui.load_data_file = [&](a_vector<uint8_t> &data, a_string filename)
+	{
 		load_data_file(data, std::move(filename));
 	};
 
@@ -1389,8 +1377,9 @@ int main()
 	ui.load_replay_file("D:\\last_replay.rep");
 #endif
 
-	if (ui.create_window) {
-		auto& wnd = ui.wnd;
+	if (ui.create_window)
+	{
+		auto &wnd = ui.wnd;
 		wnd.create("Titan Reactor / OpenBW", 0, 0, screen_width, screen_height);
 	}
 
