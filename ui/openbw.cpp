@@ -692,8 +692,8 @@ struct util_functions : state_functions
 
 		const int unit_id = decode(dumping);
 		bool is_dirty = false;
-		const auto is_new = std::get<1>(m->unit_dumps.emplace(dumping->index, unit_dump_t{}));
-		const auto in = m->unit_dumps.find(dumping->index);
+		const auto is_new = std::get<1>(m->unit_dumps.emplace(decode(dumping), unit_dump_t{}));
+		const auto in = m->unit_dumps.find(decode(dumping));
 		unit_dump_t &out = in->second;
 
 		//always set id
@@ -1363,6 +1363,7 @@ int main()
 	main_t m(std::move(player));
 
 #ifndef TITAN_HEADLESS
+
 	auto &ui = m.ui;
 	m.ui.load_all_image_data(load_data_file);
 

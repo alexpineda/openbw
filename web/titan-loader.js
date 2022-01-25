@@ -3,13 +3,16 @@ import "./downgrade.js";
 import _files from "./list.js";
 
 window.sidegrade = sidegrade;
-console.log("empty", _files.some(f => f.trim() === ""));
+console.log(
+  "empty",
+  _files.some((f) => f.trim() === "")
+);
 let openBw;
 
 async function init() {
-  console.log("GO")
+  console.log("GO");
   openBw = await createOpenBw();
-  
+
   window.openBw = openBw;
   setupCallbacks();
 
@@ -21,18 +24,15 @@ async function init() {
   try {
     await load_files_from_indexdb();
     callMain();
-  $("#select_replay_label").removeClass("disabled");
-} catch (e) {
+    $("#select_replay_label").removeClass("disabled");
+  } catch (e) {
     console.warn(e);
   }
 
-
-  document
-    .getElementById("mpq_files")
-    .addEventListener("change", (evt) => {
-      console.log("file selected")
-      on_mpq_specify_select(evt)
-    } );
+  document.getElementById("mpq_files").addEventListener("change", (evt) => {
+    console.log("file selected");
+    on_mpq_specify_select(evt);
+  });
   document
     .getElementById("select_rep_file")
     .addEventListener("change", on_rep_file_select, false);
@@ -61,8 +61,7 @@ async function init() {
  * Constants
  *****************************/
 var C_FILENAMES = _files;
-var C_SPECIFY_MPQS_MESSAGE =
-  "BAD BOY";
+var C_SPECIFY_MPQS_MESSAGE = "BAD BOY";
 
 /*****************************
  * Globals
@@ -122,7 +121,7 @@ function on_mpq_specify_select(e) {
     var index = index_by_name(input_files[i].name);
     if (index != -1) {
       files[index] = input_files[i];
-      console.log(files)
+      console.log(files);
     } else {
       ++unrecognized_files;
     }
@@ -150,7 +149,7 @@ function on_mpq_specify_select(e) {
   print_to_modal("Specify MPQ files", status, true);
 
   if (has_all_files()) {
-    console.log("HAS ALL FILES")
+    console.log("HAS ALL FILES");
     files_to_uint8array_buffers();
     store_files_in_indexdb();
 
@@ -202,7 +201,11 @@ function load_replay_file(files, download) {
         start_replay(buf, arr.length);
         openBw._free(buf);
       } catch (e) {
-        console.error(openBw.getExceptionMessage(e));
+        if (typeof e === "number") {
+          console.error(openBw.getExceptionMessage(e));
+        } else {
+          console.error(e);
+        }
       }
     };
   })();
@@ -245,8 +248,8 @@ function index_by_name(name) {
 function has_all_files() {
   for (var i = 0; i != C_FILENAMES.length; ++i) {
     if (!files[i]) {
-      console.warn(`missing ${C_FILENAMES[i]}`)
-       return false;
+      console.warn(`missing ${C_FILENAMES[i]}`);
+      return false;
     }
   }
   return true;
@@ -264,7 +267,7 @@ function setupCallbacks() {
     js_file_size,
     js_read_data,
     js_load_done,
-    js_file_index
+    js_file_index,
   });
 }
 
@@ -282,16 +285,17 @@ const js_read_data = (index, dst, offset, size) => {
 };
 
 const filenameFromPath = function (str) {
-  return str.split('\\').pop().split('/').pop();
-}
+  return str.split("\\").pop().split("/").pop();
+};
 
 const js_file_index = ($0) => {
   var filename = filenameFromPath(openBw.UTF8ToString($0));
 
-  var index = files.findIndex(item => 
-    filename.toLowerCase() === item.name.toLowerCase());
+  var index = files.findIndex(
+    (item) => filename.toLowerCase() === item.name.toLowerCase()
+  );
   return index >= 0 ? index : 9999;
-}
+};
 
 const js_file_size = (index) => {
   return files[index].size;
@@ -338,16 +342,12 @@ function load_file_metadata_from_indexdb(store, key, file_index) {
       rej("Could not retrieve " + key + " from DB.");
     };
     request.onsuccess = function (event) {
-      if (request.result ===  undefined) {
+      if (request.result === undefined) {
         rej("Result was undefined");
         return;
       }
       console.log(
-        "read " +
-          key +
-          "; size: " +
-          request.result.blob.length +
-          ": success."
+        "read " + key + "; size: " + request.result.blob.length + ": success."
       );
       print_to_modal("Loading MPQs", key + ": success.");
       res(request.result.blob);
@@ -391,7 +391,11 @@ function load_files_from_indexdb() {
 
     try {
       for (var file_index = 0; file_index < C_FILENAMES.length; file_index++) {
-        files[file_index] = await load_file_metadata_from_indexdb(objectStore, C_FILENAMES[file_index], file_index);
+        files[file_index] = await load_file_metadata_from_indexdb(
+          objectStore,
+          C_FILENAMES[file_index],
+          file_index
+        );
       }
 
       console.log("all files loaded from index.");
@@ -399,7 +403,6 @@ function load_files_from_indexdb() {
     } catch (e) {
       rej("Error while loading MPQs from DB: " + e);
     }
-    
   });
 }
 
@@ -409,7 +412,11 @@ function callMain() {
     !_mainCalled && openBw.callMain();
     _mainCalled = true;
   } catch (e) {
-    console.error(openBw.getExceptionMessage(e));
+    if (typeof e === "number") {
+      console.error(openBw.getExceptionMessage(e));
+    } else {
+      console.error(e);
+    }
   }
 }
 
@@ -417,15 +424,19 @@ function loop() {
   try {
     openBw._next_frame();
   } catch (e) {
-    console.error(openBw.getExceptionMessage(e));
+    if (typeof e === "number") {
+      console.error(openBw.getExceptionMessage(e));
+    } else {
+      console.error(e);
+    }
   }
-  requestAnimationFrame(loop)
+  requestAnimationFrame(loop);
 }
 
 function start_replay(buffer, length) {
   openBw._load_replay(buffer, length);
   console.log("replay loaded");
-  requestAnimationFrame(loop)
+  requestAnimationFrame(loop);
 }
 
 function files_to_uint8array_buffers() {
@@ -457,19 +468,18 @@ function files_to_uint8array_buffers() {
 let lastUnits = 0;
 let lastFrame = 0;
 window.log = () => {
-  const frame= openBw._replay_get_value(2);
-  if ( frame != lastFrame && frame % 10 == 0) {
+  const frame = openBw._replay_get_value(2);
+  if (frame != lastFrame && frame % 10 == 0) {
     console.log(`frame: ${frame}`);
   }
   // console.log(`frame: ${openBw._replay_get_value(2)}`);
   // console.log("units", openBw._counts(0, 1));
   // console.log("units", openBw._counts(0, 1));
 
-
   // const units = openBw._counts(0, 1);
   // if (units != lastUnits) {
-    // console.log("units", openBw.get_util_funcs().get_units());
-    // lastUnits = units;
+  // console.log("units", openBw.get_util_funcs().get_units());
+  // lastUnits = units;
   // }
   // console.log("units", openBw.get_util_funcs().get_units(true));
   // console.log("sprites", openBw.get_util_funcs().get_sprites(true));
@@ -509,21 +519,19 @@ window.log = () => {
   // console.log("hp", openBw.HEAP16[ptr+5]);
   // console.log("sounds", sounds);
 
-  
   // unsigned short int id;
-	// short int typeId;
-	// short int owner;
-	// short int x;
-	// short int y;
-	// short int hp;
-	// short int energy;
-	// short int sprite_index = -1;
-	// int status_flags;
-	// short int direction;
-	// short int remainingBuildTime;
-	// short int shields; 
-	// unsigned char order;
-	// unsigned char remainingTrainTime = 0;
-	// short int kills;
-
-}
+  // short int typeId;
+  // short int owner;
+  // short int x;
+  // short int y;
+  // short int hp;
+  // short int energy;
+  // short int sprite_index = -1;
+  // int status_flags;
+  // short int direction;
+  // short int remainingBuildTime;
+  // short int shields;
+  // unsigned char order;
+  // unsigned char remainingTrainTime = 0;
+  // short int kills;
+};
