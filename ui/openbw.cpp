@@ -606,12 +606,13 @@ struct util_functions : state_functions
 	std::pair<val, bool> dump_image(image_t *dumping, const bool dirty_check, int order)
 	{
 		val o = val::object();
+		o.set("index", val(dumping->index));
+
 		bool is_dirty = false;
 		const auto is_new = std::get<1>(m->image_dumps.emplace(dumping->index, image_dump_t{}));
 		const auto in = m->image_dumps.find(dumping->index);
 		image_dump_t &out = in->second;
 
-		o.set("index", val(dumping->index));
 		DUMP_RAW(typeId, (int)dumping->image_type->id);
 		DUMP_VAL(flags);
 

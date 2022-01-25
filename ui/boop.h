@@ -59,7 +59,8 @@ namespace bwgame
 
 		virtual void on_kill_unit(unit_t *u) override
 		{
-			deleted_units.push_back(u->index);
+
+			deleted_units.push_back(get_unit_id(u).raw_value);
 		}
 
 		fp8 game_speed = fp8::integer(1);
