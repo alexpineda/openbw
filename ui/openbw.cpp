@@ -85,6 +85,7 @@ struct main_t
 
 	std::map<int, image_dump_t> image_dumps;
 	std::map<int, sprite_dump_t> sprite_dumps;
+	std::vector<sprite_dump_t> sprite_dumps_vec;
 	std::map<int, unit_dump_t> unit_dumps;
 
 	void reset_dumps()
@@ -92,6 +93,7 @@ struct main_t
 		unit_dumps.clear();
 		sprite_dumps.clear();
 		image_dumps.clear();
+		sprite_dumps_vec.clear();
 	}
 
 	void reset()
@@ -642,13 +644,8 @@ struct util_functions : state_functions
 		// DUMP_VAL(index);
 		DUMP_RAW(typeId, (int)dumping->sprite_type->id);
 		DUMP_VAL(owner);
-		DUMP_VAL(selection_index);
-		DUMP_VAL(visibility_flags);
-		DUMP_VAL(elevation_level);
+		DUMP_VAL_AS(elevation, elevation_level);
 		DUMP_VAL(flags);
-		DUMP_VAL(selection_timer);
-		DUMP_VAL(width);
-		DUMP_VAL(height);
 		DUMP_RAW(mainImageIndex, dumping->main_image->index);
 
 		DUMP_RAW(x, decode(dumping->position.x));
@@ -675,6 +672,56 @@ struct util_functions : state_functions
 		o.set("images", r);
 
 		return std::make_pair(o, is_dirty);
+	}
+
+	image_dump_t dump_image_raw(image_t *dumping, int order)
+	{
+		image_dump_t out;
+
+		out.index = dumping->index;
+		out.typeId = (int)dumping->image_type->id;
+		out.flags = dumping->flags;
+		out.order = order;
+		out.x = dumping->offset.x;
+		out.y = dumping->offset.y;
+		out.modifier = dumping->modifier;
+		out.modifierData1 = dumping->modifier_data1;
+		out.frameIndex = dumping->frame_index;
+		out.frameIndexOffset = dumping->frame_index_offset;
+		out.frameIndexBase = dumping->frame_index_base;
+
+		return out;
+	}
+
+	sprite_dump_t dump_sprite_raw(const sprite_t *dumping)
+	{
+		sprite_dump_t out;
+
+		out.index = dumping->index;
+		out.typeId = (int)dumping->sprite_type->id;
+		out.owner = dumping->owner;
+		out.elevation = dumping->elevation_level;
+		out.flags = dumping->flags;
+		out.mainImageIndex = dumping->main_image->index;
+		out.x = decode(dumping->position.x);
+		out.y = decode(dumping->position.y);
+
+		int image_count = 0;
+		for (auto image : ptr(dumping->images))
+		{
+			image_count++;
+		}
+		out.imageCount = image_count;
+
+		out.images.clear();
+		int i = 0;
+		for (auto image : ptr(dumping->images))
+		{
+			out.images.emplace_back(dump_image_raw(image, image_count - i));
+			i++;
+		}
+
+		return out;
 	}
 
 	val dump_sound(played_sound_t *dumping)
@@ -734,15 +781,6 @@ struct util_functions : state_functions
 
 		DUMP_VAL_AS(kills, kill_count);
 		DUMP_RAW(order, (int)dumping->order_type->id);
-
-		{
-			// int d = direction_index(dumping->heading);
-			// d -= 64;
-			// if (d < 0)
-			// 	d += 256;
-			// DUMP_RAW(angle, (double)d * 3.14159265358979323846 / 128.0);
-		}
-
 		DUMP_VAL(subunit);
 		DUMP_VAL_AS(orderState, order_state);
 
@@ -763,29 +801,12 @@ struct util_functions : state_functions
 		// DUMP_VAL(movement_state);
 		// DUMP_VAL(last_attacking_player);
 
-		//		prev
-		// DUMP_VAL(main_order_timer);
-		// DUMP_VAL(auto_target_unit);
-		// DUMP_VAL(connected_unit);
-		// DUMP_VAL(order_queue_count);
-		// DUMP_VAL(order_process_timer);
-		// DUMP_VAL(unknown_0x086);
-		// DUMP_VAL(attack_notify_timer);
-		// DUMP_VAL(last_event_timer);
-		// DUMP_VAL(last_event_color);
-		// DUMP_VAL(rank_increase);
-		// DUMP_VAL(secondary_order_timer);
-		// DUMP_VAL(user_action_flags);
-		// DUMP_VAL(cloak_counter);
-		// DUMP_VAL(previous_hp);
-
 		val loaded = val::object();
 		for (int i = 0; i < dumping->loaded_units.size(); ++i)
 		{
 			loaded.set(i, dumping->loaded_units[i].raw_value);
 		}
 		// o.set("loaded_units", loaded);
-		// o.set("_flingy_t", dump_flingy(dumping));
 		return std::make_pair(o, is_dirty);
 	}
 
@@ -951,6 +972,18 @@ struct util_functions : state_functions
 		}
 
 		return r;
+	}
+
+	sprite_dump_t *get_sprites_ptr()
+	{
+		m->sprite_dumps_vec.clear();
+		auto sprites = sort_sprites();
+		for (auto &sprite : sprites)
+		{
+			m->sprite_dumps_vec.emplace_back(dump_sprite_raw(sprite.second));
+		}
+
+		return m->sprite_dumps_vec.data();
 	}
 
 	auto get_images()
@@ -1214,9 +1247,9 @@ extern "C" char *get_buffer(int index)
 	switch (index)
 	{
 	case 0: //tiles + creep (t->flags & tile_t::flag_has_creep);
-		return reinterpret_cast<char *>(&m->ui.st.tiles.data()[0]);
+		return reinterpret_cast<char *>(m->ui.st.tiles.data());
 	case 1:
-		return reinterpret_cast<char *>(&m->ui.st.tiles.data()[0]);
+		return reinterpret_cast<char *>(util_functions(m->ui.st).get_sprites_ptr());
 	default:
 		return nullptr;
 	}

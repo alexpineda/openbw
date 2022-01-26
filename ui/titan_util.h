@@ -28,8 +28,7 @@ struct unit_dump_t
 
 struct image_dump_t
 {
-    size_t index;
-    int titanIndex;
+    int index;
     int typeId;
     int flags;
     int x; //pos
@@ -37,25 +36,21 @@ struct image_dump_t
     int modifier;
     int modifierData1;
     int order;
-    size_t frameIndex;
-    size_t frameIndexOffset;
-    size_t frameIndexBase;
+    int frameIndex;
+    int frameIndexOffset;
+    int frameIndexBase;
 };
 
 struct sprite_dump_t
 {
-    size_t index;
-    int titanIndex;
+    int index;
     int owner;
     int typeId;
-    int selection_index;
-    int visibility_flags;
-    int elevation_level;
+    int elevation;
     int flags;
-    int selection_timer;
-    int width;
-    int height;
     int x; //pos
     int y; //pos
     int mainImageIndex;
+    int imageCount;
+    std::vector<image_dump_t> images;
 };
