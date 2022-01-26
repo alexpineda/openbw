@@ -671,10 +671,18 @@ struct util_functions : state_functions
 		}
 		o.set("images", r);
 
+		if (dirty_check && is_dirty)
+		{
+			// invalidate all images since parent will ignore this sprite
+			for (auto image : ptr(dumping->images))
+			{
+				m->image_dumps.erase(image->index);
+			}
+		}
 		return std::make_pair(o, is_dirty);
 	}
 
-	image_dump_t dump_image_raw(image_t *dumping, int order)
+	image_dump_t dump_image_raw(const image_t *dumping, int order)
 	{
 		image_dump_t out;
 
@@ -986,17 +994,6 @@ struct util_functions : state_functions
 		return m->sprite_dumps_vec.data();
 	}
 
-	auto get_images()
-	{
-		val r = val::array();
-		size_t i = 0;
-		for (image_t *u : ptr(st.images_container.free_list))
-		{
-			r.set(i++, u);
-		}
-		return r;
-	}
-
 	auto get_bullets()
 	{
 		val r = val::array();
@@ -1229,7 +1226,6 @@ EMSCRIPTEN_BINDINGS(openbw)
 		.function("get_incomplete_upgrades", &util_functions::get_incomplete_upgrades)
 		.function("get_incomplete_research", &util_functions::get_incomplete_research)
 		.function("get_sprites", &util_functions::get_sprites)
-		.function("get_images", &util_functions::get_images)
 		.function("get_bullets", &util_functions::get_bullets, allow_raw_pointers())
 		.function("get_sounds", &util_functions::get_sounds)
 		.function("get_deleted_sprites", &util_functions::get_deleted_sprites)
