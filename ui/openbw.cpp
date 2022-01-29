@@ -962,6 +962,17 @@ struct util_functions : state_functions
 		return r;
 	}
 
+	auto get_deleted_units()
+	{
+		val r = val::array();
+		size_t i = 0;
+		for (auto &id : m->ui.deleted_units)
+		{
+			r.set(i++, val(id));
+		}
+		return r;
+	}
+
 	auto count_units()
 	{
 		int unit_count = 0;
@@ -1092,6 +1103,7 @@ EMSCRIPTEN_BINDINGS(openbw)
 		.function("get_sprites", &util_functions::get_sprites_ptr, allow_raw_pointers())
 		.function("get_images", &util_functions::get_images_ptr, allow_raw_pointers())
 		.function("get_deleted_sprites", &util_functions::get_deleted_sprites)
+		.function("get_deleted_units", &util_functions::get_deleted_units)
 		.function("get_deleted_images", &util_functions::get_deleted_images);
 
 	function("get_util_funcs", &get_util_funcs);
