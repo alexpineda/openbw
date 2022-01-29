@@ -83,17 +83,12 @@ struct main_t
 	unit_t *screen_show_unit = NULL;
 	int screen_show_unit_cooldown = 0;
 
-	std::map<int, image_dump_t> image_dumps;
-	std::map<int, sprite_dump_t> sprite_dumps;
-	std::vector<sprite_dump_t> sprite_dumps_vec;
+	sprite_t *sprite_dumps[2500];
 	std::map<int, unit_dump_t> unit_dumps;
 
 	void reset_dumps()
 	{
 		unit_dumps.clear();
-		sprite_dumps.clear();
-		image_dumps.clear();
-		sprite_dumps_vec.clear();
 	}
 
 	void reset()
@@ -511,7 +506,7 @@ extern "C" void replay_set_value(int index, double value)
 	}
 }
 
-// #ifdef EMSCRIPTEN
+//#ifdef EMSCRIPTEN
 
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
@@ -603,133 +598,6 @@ struct util_functions : state_functions
 			return -1;
 		}
 		return f.get_unit_id(unit).raw_value;
-	}
-
-	std::pair<val, bool> dump_image(image_t *dumping, const bool dirty_check, int order)
-	{
-		val o = val::object();
-		o.set("index", val(dumping->index));
-
-		bool is_dirty = false;
-		const auto is_new = std::get<1>(m->image_dumps.emplace(dumping->index, image_dump_t{}));
-		const auto in = m->image_dumps.find(dumping->index);
-		image_dump_t &out = in->second;
-
-		DUMP_RAW(typeId, (int)dumping->image_type->id);
-		DUMP_VAL(flags);
-
-		DUMP_RAW(order, order);
-		DUMP_RAW(x, decode(dumping->offset.x));
-		DUMP_RAW(y, decode(dumping->offset.y));
-
-		DUMP_VAL(modifier);
-		DUMP_VAL_AS(modifierData1, modifier_data1);
-		DUMP_VAL_AS(frameIndex, frame_index);
-		DUMP_VAL_AS(frameIndexOffset, frame_index_offset);
-		DUMP_VAL_AS(frameIndexBase, frame_index_base);
-		return std::make_pair(o, is_dirty);
-	}
-
-	std::pair<val, bool> dump_sprite(sprite_t *dumping, const bool dirty_check)
-	{
-
-		val o = val::object();
-		bool is_dirty = false;
-		const auto is_new = std::get<1>(m->sprite_dumps.emplace(dumping->index, sprite_dump_t{}));
-		const auto in = m->sprite_dumps.find(dumping->index);
-		sprite_dump_t &out = in->second;
-
-		o.set("index", val(dumping->index));
-
-		// DUMP_VAL(index);
-		DUMP_RAW(typeId, (int)dumping->sprite_type->id);
-		DUMP_VAL(owner);
-		DUMP_VAL_AS(elevation, elevation_level);
-		DUMP_VAL(flags);
-		DUMP_RAW(mainImageIndex, dumping->main_image->index);
-
-		DUMP_RAW(x, decode(dumping->position.x));
-		DUMP_RAW(y, decode(dumping->position.y));
-
-		int image_count = 0;
-		for (auto image : ptr(dumping->images))
-		{
-			image_count++;
-		}
-
-		val r = val::array();
-		size_t i = 0;
-		for (auto image : ptr(dumping->images))
-		{
-			auto img = dump_image(image, dirty_check, image_count - i);
-			if (dirty_check && !img.second)
-			{
-				continue;
-			}
-			r.set(i++, std::get<0>(img));
-			is_dirty = true;
-		}
-		o.set("images", r);
-
-		if (dirty_check && is_dirty)
-		{
-			// invalidate all images since parent will ignore this sprite
-			for (auto image : ptr(dumping->images))
-			{
-				m->image_dumps.erase(image->index);
-			}
-		}
-		return std::make_pair(o, is_dirty);
-	}
-
-	image_dump_t dump_image_raw(const image_t *dumping, int order)
-	{
-		image_dump_t out;
-
-		out.index = dumping->index;
-		out.typeId = (int)dumping->image_type->id;
-		out.flags = dumping->flags;
-		out.order = order;
-		out.x = dumping->offset.x;
-		out.y = dumping->offset.y;
-		out.modifier = dumping->modifier;
-		out.modifierData1 = dumping->modifier_data1;
-		out.frameIndex = dumping->frame_index;
-		out.frameIndexOffset = dumping->frame_index_offset;
-		out.frameIndexBase = dumping->frame_index_base;
-
-		return out;
-	}
-
-	sprite_dump_t dump_sprite_raw(const sprite_t *dumping)
-	{
-		sprite_dump_t out;
-
-		out.index = dumping->index;
-		out.typeId = (int)dumping->sprite_type->id;
-		out.owner = dumping->owner;
-		out.elevation = dumping->elevation_level;
-		out.flags = dumping->flags;
-		out.mainImageIndex = dumping->main_image->index;
-		out.x = decode(dumping->position.x);
-		out.y = decode(dumping->position.y);
-
-		int image_count = 0;
-		for (auto image : ptr(dumping->images))
-		{
-			image_count++;
-		}
-		out.imageCount = image_count;
-
-		out.images.clear();
-		int i = 0;
-		for (auto image : ptr(dumping->images))
-		{
-			out.images.emplace_back(dump_image_raw(image, image_count - i));
-			i++;
-		}
-
-		return out;
 	}
 
 	val dump_sound(played_sound_t *dumping)
@@ -953,45 +821,39 @@ struct util_functions : state_functions
 		return r;
 	}
 
-	auto get_sprites(const bool dirty_check = true)
+	auto get_images_ptr(size_t sprite_addr)
 	{
-		for (auto &i : m->ui.deleted_sprites)
-		{
-			m->sprite_dumps.erase(i);
-		}
-
-		for (auto &i : m->ui.deleted_images)
-		{
-			m->image_dumps.erase(i);
-		}
-
 		val r = val::array();
-		int i = 0;
+		size_t x = 0;
 
-		auto sprites = sort_sprites();
-		for (auto &sprite : sprites)
+		sprite_t *sprite = (sprite_t *)sprite_addr;
+		for (image_t *image : ptr(sprite->images))
 		{
-			auto o = dump_sprite((sprite_t *)sprite.second, dirty_check);
-			if (dirty_check && !o.second)
-			{
-				continue;
-			}
-			r.set(i++, o.first);
+			r.set(x++, val((size_t)image));
 		}
 
 		return r;
 	}
 
-	sprite_dump_t *get_sprites_ptr()
+	auto get_sprites_ptr()
 	{
-		m->sprite_dumps_vec.clear();
-		auto sprites = sort_sprites();
-		for (auto &sprite : sprites)
+		val r = val::array();
+		size_t x = 0;
+
+		for (size_t i = 0; i != st.sprites_on_tile_line.size(); ++i)
 		{
-			m->sprite_dumps_vec.emplace_back(dump_sprite_raw(sprite.second));
+			for (sprite_t *sprite : ptr(st.sprites_on_tile_line[i]))
+			{
+				if (sprite != nullptr)
+				{
+					if (s_hidden(sprite))
+						continue;
+					r.set(x++, val((size_t)sprite));
+				}
+			}
 		}
 
-		return m->sprite_dumps_vec.data();
+		return r;
 	}
 
 	auto get_bullets()
@@ -1225,9 +1087,10 @@ EMSCRIPTEN_BINDINGS(openbw)
 		.function("get_completed_research", &util_functions::get_completed_research)
 		.function("get_incomplete_upgrades", &util_functions::get_incomplete_upgrades)
 		.function("get_incomplete_research", &util_functions::get_incomplete_research)
-		.function("get_sprites", &util_functions::get_sprites)
 		.function("get_bullets", &util_functions::get_bullets, allow_raw_pointers())
 		.function("get_sounds", &util_functions::get_sounds)
+		.function("get_sprites", &util_functions::get_sprites_ptr, allow_raw_pointers())
+		.function("get_images", &util_functions::get_images_ptr, allow_raw_pointers())
 		.function("get_deleted_sprites", &util_functions::get_deleted_sprites)
 		.function("get_deleted_images", &util_functions::get_deleted_images);
 
@@ -1238,14 +1101,12 @@ EMSCRIPTEN_BINDINGS(openbw)
 // 	case 14:
 // 		return (double)m->ui.apm.at(player).current_apm;
 
-extern "C" char *get_buffer(int index)
+extern "C" void *get_buffer(int index)
 {
 	switch (index)
 	{
 	case 0: //tiles + creep (t->flags & tile_t::flag_has_creep);
-		return reinterpret_cast<char *>(m->ui.st.tiles.data());
-	case 1:
-		return reinterpret_cast<char *>(util_functions(m->ui.st).get_sprites_ptr());
+		return reinterpret_cast<void *>(m->ui.st.tiles.data());
 	default:
 		return nullptr;
 	}
@@ -1299,6 +1160,8 @@ extern "C" int counts(int player, int index)
 		return util_functions(m->ui.st).worker_supply(player);
 	case 13:
 		return util_functions(m->ui.st).army_supply(player);
+	case 14:
+		return sizeof(sprite_t);
 	default:
 		return 0;
 	}
@@ -1352,7 +1215,7 @@ extern "C" void load_replay(const uint8_t *data, size_t len)
 	m->ui.load_replay_data(data, len);
 	any_replay_loaded = true;
 }
-// #endif
+//#endif
 
 int main()
 {
@@ -1372,6 +1235,16 @@ int main()
 	auto load_data_file = data_loading::data_files_directory("D:\\dev\\openbw\\openbw-original\\openbw-original\\Debug\\");
 #endif
 
+	game_player player(load_data_file);
+
+	main_t m(std::move(player));
+
+	auto &ui = m.ui;
+
+#ifndef EMSCRIPTEN
+	ui.load_replay_file("D:\\last_replay.rep");
+#endif
+
 #ifdef TITAN_WRITEGIF
 	screen_width = ui.game_st.map_tile_width + 4;
 	screen_height = ui.game_st.map_tile_height + 4;
@@ -1388,13 +1261,8 @@ int main()
 	}
 #endif // TITAN_WRITEGIF
 
-	game_player player(load_data_file);
-
-	main_t m(std::move(player));
-
 #ifndef TITAN_HEADLESS
 
-	auto &ui = m.ui;
 	m.ui.load_all_image_data(load_data_file);
 
 	ui.load_data_file = [&](a_vector<uint8_t> &data, a_string filename)
@@ -1403,10 +1271,6 @@ int main()
 	};
 
 	ui.init();
-
-#ifndef EMSCRIPTEN
-	ui.load_replay_file("D:\\last_replay.rep");
-#endif
 
 	if (ui.create_window)
 	{
