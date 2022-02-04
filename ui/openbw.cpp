@@ -100,7 +100,6 @@ struct main_t
 
 	bool update()
 	{
-		//@todo this may be incorrect check state save/loading
 		ui.played_sounds.clear();
 		ui.deleted_images.clear();
 		ui.deleted_sprites.clear();
@@ -506,7 +505,7 @@ extern "C" void replay_set_value(int index, double value)
 	}
 }
 
-//#ifdef EMSCRIPTEN
+#ifdef EMSCRIPTEN
 
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
@@ -537,34 +536,22 @@ struct util_functions : state_functions
 	util_functions(state &st) : state_functions(st) {}
 
 #define STR(a) #a
-#define DUMP_RAW(name, value)                        \
-	if (is_new || !dirty_check || out.name != value) \
-	{                                                \
-		o.set(STR(name), val(value));                \
-		out.name = value;                            \
-		is_dirty = true;                             \
+#define DUMP_RAW(name, value)     \
+	o.set(STR(name), val(value)); \
+	is_dirty = true;
+
+#define DUMP_VAL(name)                      \
+	{                                       \
+		auto value = decode(dumping->name); \
+		o.set(STR(name), val(value));       \
+		is_dirty = true;                    \
 	}
 
-#define DUMP_VAL(name)                                   \
-	{                                                    \
-		auto value = decode(dumping->name);              \
-		if (is_new || !dirty_check || out.name != value) \
-		{                                                \
-			o.set(STR(name), val(value));                \
-			out.name = value;                            \
-			is_dirty = true;                             \
-		}                                                \
-	}
-
-#define DUMP_VAL_AS(aka, name)                          \
-	{                                                   \
-		auto value = decode(dumping->name);             \
-		if (is_new || !dirty_check || out.aka != value) \
-		{                                               \
-			o.set(STR(aka), val(value));                \
-			out.aka = value;                            \
-			is_dirty = true;                            \
-		}                                               \
+#define DUMP_VAL_AS(aka, name)              \
+	{                                       \
+		auto value = decode(dumping->name); \
+		o.set(STR(aka), val(value));        \
+		is_dirty = true;                    \
 	}
 
 	template <typename T>
@@ -610,7 +597,7 @@ struct util_functions : state_functions
 		return o;
 	}
 
-	std::pair<val, bool> dump_unit(unit_t *dumping, const bool dirty_check)
+	auto dump_unit(unit_t *dumping, const bool dirty_check)
 	{
 		val o = val::object();
 
@@ -621,6 +608,7 @@ struct util_functions : state_functions
 		unit_dump_t &out = in->second;
 
 		//always set id
+		o.set("_addr", val((size_t)dumping));
 		o.set("id", val(unit_id));
 
 		DUMP_RAW(typeId, (int)dumping->unit_type->id);
@@ -683,7 +671,7 @@ struct util_functions : state_functions
 			loaded.set(i, dumping->loaded_units[i].raw_value);
 		}
 		// o.set("loaded_units", loaded);
-		return std::make_pair(o, is_dirty);
+		return o;
 	}
 
 	uint32_t sprite_depth_order(const sprite_t *sprite) const
@@ -787,7 +775,7 @@ struct util_functions : state_functions
 		return r;
 	}
 
-	auto get_units(const bool dirty_check = true)
+	auto get_units_debug()
 	{
 		for (auto &i : m->ui.deleted_units)
 		{
@@ -800,11 +788,7 @@ struct util_functions : state_functions
 		{
 			for (unit_t *u : ptr(st.player_units[owner]))
 			{
-				auto o = dump_unit(u, dirty_check);
-				if (std::get<1>(o))
-				{
-					r.set(i++, std::get<0>(o));
-				}
+				r.set(i++, dump_unit(u, false));
 			}
 		}
 		return r;
@@ -821,18 +805,63 @@ struct util_functions : state_functions
 		return r;
 	}
 
-	auto get_images_ptr(size_t sprite_addr)
+	std::pair<val, bool> dump_image(image_t *dumping, const bool dirty_check, int order)
 	{
-		val r = val::array();
-		size_t x = 0;
+		val o = val::object();
+		o.set("index", val(dumping->index));
 
-		sprite_t *sprite = (sprite_t *)sprite_addr;
-		for (image_t *image : ptr(sprite->images))
+		bool is_dirty = false;
+
+		o.set("_addr", val((size_t)dumping));
+		DUMP_RAW(typeId, (int)dumping->image_type->id);
+		DUMP_VAL(flags);
+
+		DUMP_RAW(order, order);
+		DUMP_RAW(x, decode(dumping->offset.x));
+		DUMP_RAW(y, decode(dumping->offset.y));
+
+		DUMP_VAL(modifier);
+		DUMP_VAL_AS(modifierData1, modifier_data1);
+		DUMP_VAL_AS(frameIndex, frame_index);
+		DUMP_VAL_AS(frameIndexOffset, frame_index_offset);
+		DUMP_VAL_AS(frameIndexBase, frame_index_base);
+		return std::make_pair(o, is_dirty);
+	}
+
+	auto dump_sprite(sprite_t *dumping, const bool dirty_check)
+	{
+
+		val o = val::object();
+		bool is_dirty = false;
+
+		o.set("index", val(dumping->index));
+		o.set("_addr", val((size_t)dumping));
+
+		// DUMP_VAL(index);
+		DUMP_RAW(typeId, (int)dumping->sprite_type->id);
+		DUMP_VAL(owner);
+		DUMP_VAL_AS(elevation, elevation_level);
+		DUMP_VAL(flags);
+		DUMP_RAW(mainImageIndex, dumping->main_image->index);
+
+		DUMP_RAW(x, decode(dumping->position.x));
+		DUMP_RAW(y, decode(dumping->position.y));
+
+		int image_count = 0;
+		for (auto image : ptr(dumping->images))
 		{
-			r.set(x++, val((size_t)image));
+			image_count++;
 		}
 
-		return r;
+		val r = val::array();
+		size_t i = 0;
+		for (auto image : ptr(dumping->images))
+		{
+			auto img = dump_image(image, dirty_check, image_count - i);
+			r.set(i++, std::get<0>(img));
+		}
+		o.set("images", r);
+		return o;
 	}
 
 	auto get_sprites_ptr()
@@ -849,6 +878,25 @@ struct util_functions : state_functions
 					if (s_hidden(sprite))
 						continue;
 					r.set(x++, val((size_t)sprite));
+				}
+			}
+		}
+
+		return r;
+	}
+
+	auto get_sprites_debug()
+	{
+		val r = val::array();
+		size_t x = 0;
+
+		for (size_t i = 0; i != st.sprites_on_tile_line.size(); ++i)
+		{
+			for (sprite_t *sprite : ptr(st.sprites_on_tile_line[i]))
+			{
+				if (sprite != nullptr)
+				{
+					r.set(x++, dump_sprite(sprite, false));
 				}
 			}
 		}
@@ -1093,7 +1141,7 @@ EMSCRIPTEN_BINDINGS(openbw)
 		.function("army_supply", &util_functions::army_supply)
 		.function("get_incomplete_units", &util_functions::get_incomplete_units, allow_raw_pointers())
 		.function("get_completed_units", &util_functions::get_completed_units, allow_raw_pointers())
-		.function("get_units", &util_functions::get_units, allow_raw_pointers())
+		.function("get_units_debug", &util_functions::get_units_debug, allow_raw_pointers())
 		.function("get_completed_upgrades", &util_functions::get_completed_upgrades)
 		.function("get_completed_research", &util_functions::get_completed_research)
 		.function("get_incomplete_upgrades", &util_functions::get_incomplete_upgrades)
@@ -1101,7 +1149,7 @@ EMSCRIPTEN_BINDINGS(openbw)
 		.function("get_bullets", &util_functions::get_bullets, allow_raw_pointers())
 		.function("get_sounds", &util_functions::get_sounds)
 		.function("get_sprites", &util_functions::get_sprites_ptr, allow_raw_pointers())
-		.function("get_images", &util_functions::get_images_ptr, allow_raw_pointers())
+		.function("get_sprites_debug", &util_functions::get_sprites_debug, allow_raw_pointers())
 		.function("get_deleted_sprites", &util_functions::get_deleted_sprites)
 		.function("get_deleted_units", &util_functions::get_deleted_units)
 		.function("get_deleted_images", &util_functions::get_deleted_images);
@@ -1117,8 +1165,12 @@ extern "C" void *get_buffer(int index)
 {
 	switch (index)
 	{
-	case 0: //tiles + creep (t->flags & tile_t::flag_has_creep);
+	case 0:
 		return reinterpret_cast<void *>(m->ui.st.tiles.data());
+	case 1:
+		return reinterpret_cast<void *>(m->ui.st.sprites_on_tile_line.data());
+	case 2:
+		return reinterpret_cast<void *>(m->ui.st.player_units.data());
 	default:
 		return nullptr;
 	}
@@ -1173,7 +1225,7 @@ extern "C" int counts(int player, int index)
 	case 13:
 		return util_functions(m->ui.st).army_supply(player);
 	case 14:
-		return sizeof(sprite_t);
+		return m->ui.st.sprites_on_tile_line.size();
 	default:
 		return 0;
 	}
@@ -1227,7 +1279,7 @@ extern "C" void load_replay(const uint8_t *data, size_t len)
 	m->ui.load_replay_data(data, len);
 	any_replay_loaded = true;
 }
-//#endif
+#endif
 
 int main()
 {

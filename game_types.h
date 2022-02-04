@@ -551,8 +551,6 @@ namespace bwgame
 		xy position;
 		image_t *main_image;
 		intrusive_list<image_t, default_link_f> images;
-
-		uint32_t titan_index;
 	};
 
 	struct thingy_t : link_base
