@@ -111,7 +111,7 @@ struct main_t
 
 		if (now - last_fps >= std::chrono::seconds(1))
 		{
-			//log("game fps: %g\n", fps_counter / std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1, 1>>>(now - last_fps).count());
+			// log("game fps: %g\n", fps_counter / std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1, 1>>>(now - last_fps).count());
 			last_fps = now;
 			fps_counter = 0;
 		}
@@ -607,7 +607,7 @@ struct util_functions : state_functions
 		const auto in = m->unit_dumps.find(decode(dumping));
 		unit_dump_t &out = in->second;
 
-		//always set id
+		// always set id
 		o.set("_addr", val((size_t)dumping));
 		o.set("id", val(unit_id));
 
@@ -1171,6 +1171,12 @@ extern "C" void *get_buffer(int index)
 		return reinterpret_cast<void *>(m->ui.st.sprites_on_tile_line.data());
 	case 2:
 		return reinterpret_cast<void *>(m->ui.st.player_units.data());
+	case 3:
+		return reinterpret_cast<void *>(m->ui.deleted_images.data());
+	case 4:
+		return reinterpret_cast<void *>(m->ui.deleted_sprites.data());
+	case 5:
+		return reinterpret_cast<void *>(m->ui.deleted_units.data());
 	default:
 		return nullptr;
 	}
@@ -1183,9 +1189,9 @@ extern "C" int counts(int player, int index)
 
 	switch (index)
 	{
-	case 0: //tiles
+	case 0: // tiles
 		return m->ui.st.tiles.size();
-	case 1: //unit count
+	case 1: // unit count
 		return util_functions(m->ui.st).count_units();
 	case 2: // upgrade count
 		return util_functions(m->ui.st).count_upgrades();
@@ -1226,6 +1232,12 @@ extern "C" int counts(int player, int index)
 		return util_functions(m->ui.st).army_supply(player);
 	case 14:
 		return m->ui.st.sprites_on_tile_line.size();
+	case 15:
+		return m->ui.deleted_images.size();
+	case 16:
+		return m->ui.deleted_sprites.size();
+	case 17:
+		return m->ui.deleted_units.size();
 	default:
 		return 0;
 	}
