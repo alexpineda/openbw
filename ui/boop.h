@@ -21,6 +21,7 @@ namespace bwgame
 		std::vector<int> deleted_images;
 		std::vector<int> deleted_sprites;
 		std::vector<int> deleted_units;
+		std::vector<int> deleted_bullets;
 		std::vector<uint8_t> fow;
 
 		titan_replay_functions(game_player player) : ui_functions(std::move(player))
@@ -52,6 +53,11 @@ namespace bwgame
 			deleted_images.push_back(image->index);
 		}
 
+		virtual void on_bullet_destroy(bullet_t *bullet) override
+		{
+			deleted_bullets.push_back(bullet->sprite->index);
+		}
+
 		virtual void on_sprite_destroy(sprite_t *sprite) override
 		{
 			deleted_sprites.push_back(sprite->index);
@@ -70,6 +76,7 @@ namespace bwgame
 			deleted_images.clear();
 			deleted_sprites.clear();
 			deleted_units.clear();
+			deleted_bullets.clear();
 			played_sounds.clear();
 			fow.clear();
 

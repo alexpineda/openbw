@@ -337,6 +337,7 @@ struct state_functions {
 	virtual void on_unit_destroy(unit_t* u) {}
 	virtual void on_image_destroy(image_t* u) {}
 	virtual void on_sprite_destroy(sprite_t* u) {}
+	virtual void on_bullet_destroy(bullet_t* u) {}
 	virtual void on_kill_unit(unit_t* u) {}
 
 	virtual void on_player_eliminated(int owner) {}
@@ -14192,6 +14193,7 @@ void update_units() {
 
 	void bullet_kill(bullet_t* b) {
 		b->bullet_state = bullet_t::state_dying;
+		on_bullet_destroy(b);
 		sprite_run_anim(b->sprite, iscript_anims::Death);
 	}
 

@@ -104,6 +104,7 @@ struct main_t
 		ui.deleted_images.clear();
 		ui.deleted_sprites.clear();
 		ui.deleted_units.clear();
+		ui.deleted_bullets.clear();
 
 		auto now = clock.now();
 
@@ -864,27 +865,6 @@ struct util_functions : state_functions
 		return o;
 	}
 
-	auto get_sprites_ptr()
-	{
-		val r = val::array();
-		size_t x = 0;
-
-		for (size_t i = 0; i != st.sprites_on_tile_line.size(); ++i)
-		{
-			for (sprite_t *sprite : ptr(st.sprites_on_tile_line[i]))
-			{
-				if (sprite != nullptr)
-				{
-					if (s_hidden(sprite))
-						continue;
-					r.set(x++, val((size_t)sprite));
-				}
-			}
-		}
-
-		return r;
-	}
-
 	auto get_sprites_debug()
 	{
 		val r = val::array();
@@ -901,17 +881,6 @@ struct util_functions : state_functions
 			}
 		}
 
-		return r;
-	}
-
-	auto get_bullets()
-	{
-		val r = val::array();
-		size_t i = 0;
-		for (bullet_t *u : ptr(st.active_bullets))
-		{
-			r.set(i++, u);
-		}
 		return r;
 	}
 
@@ -1146,13 +1115,8 @@ EMSCRIPTEN_BINDINGS(openbw)
 		.function("get_completed_research", &util_functions::get_completed_research)
 		.function("get_incomplete_upgrades", &util_functions::get_incomplete_upgrades)
 		.function("get_incomplete_research", &util_functions::get_incomplete_research)
-		.function("get_bullets", &util_functions::get_bullets, allow_raw_pointers())
 		.function("get_sounds", &util_functions::get_sounds)
-		.function("get_sprites", &util_functions::get_sprites_ptr, allow_raw_pointers())
-		.function("get_sprites_debug", &util_functions::get_sprites_debug, allow_raw_pointers())
-		.function("get_deleted_sprites", &util_functions::get_deleted_sprites)
-		.function("get_deleted_units", &util_functions::get_deleted_units)
-		.function("get_deleted_images", &util_functions::get_deleted_images);
+		.function("get_sprites_debug", &util_functions::get_sprites_debug, allow_raw_pointers());
 
 	function("get_util_funcs", &get_util_funcs);
 }
@@ -1177,6 +1141,10 @@ extern "C" void *get_buffer(int index)
 		return reinterpret_cast<void *>(m->ui.deleted_sprites.data());
 	case 5:
 		return reinterpret_cast<void *>(m->ui.deleted_units.data());
+	case 6:
+		return reinterpret_cast<void *>(&m->ui.st.active_bullets);
+	case 7:
+		return reinterpret_cast<void *>(m->ui.deleted_bullets.data());
 	default:
 		return nullptr;
 	}
@@ -1238,6 +1206,8 @@ extern "C" int counts(int player, int index)
 		return m->ui.deleted_sprites.size();
 	case 17:
 		return m->ui.deleted_units.size();
+	case 18: // deleted bullets
+		return m->ui.deleted_bullets.size();
 	default:
 		return 0;
 	}

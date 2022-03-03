@@ -16,7 +16,7 @@ namespace bwgame
 	struct unit_id_t
 	{
 		T raw_value = 0;
-        static size_t unit_generation_size;
+		static size_t unit_generation_size;
 
 		unit_id_t() = default;
 		explicit unit_id_t(T raw_value) : raw_value(raw_value) {}
@@ -35,7 +35,7 @@ namespace bwgame
 		}
 	};
 
-	template<typename T>
+	template <typename T>
 	size_t unit_id_t<T>::unit_generation_size = 5;
 
 	using unit_id = unit_id_t<uint16_t>;
@@ -69,7 +69,8 @@ namespace bwgame
 
 		object_container() {}
 
-		object_container(size_t _max_size) {
+		object_container(size_t _max_size)
+		{
 			max_size = _max_size;
 		}
 
