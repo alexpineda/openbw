@@ -1,3 +1,4 @@
+
 #include "common.h"
 #include "drawing.h"
 #include "../bwgame.h"
@@ -14,6 +15,17 @@ namespace bwgame
 		int32_t unit_type_id = -1;
 	};
 
+	struct player_data_t
+	{
+		int minerals;
+		int gas;
+		int supply;
+		int supply_max;
+		int worker_supply;
+		int army_supply;
+		int apm;
+	};
+
 	struct titan_replay_functions : ui_functions
 	{
 		game_player player;
@@ -22,6 +34,7 @@ namespace bwgame
 		std::vector<int> deleted_sprites;
 		std::vector<int> deleted_units;
 		std::vector<int> deleted_bullets;
+		std::array<player_data_t, 8> player_data;
 		std::vector<uint8_t> fow;
 
 		titan_replay_functions(game_player player) : ui_functions(std::move(player))
@@ -71,6 +84,47 @@ namespace bwgame
 
 		fp8 game_speed = fp8::integer(1);
 
+		void generate_player_data()
+		{
+			for (int player = 0; player < 8; player++)
+			{
+				const int pos = player * 8;
+				auto &p = player_data[player];
+
+				double worker_supply = 0.0;
+				for (const unit_t *u : ptr(st.player_units.at(player)))
+				{
+					if (!ut_worker(u))
+						continue;
+					if (!u_completed(u))
+						continue;
+					worker_supply += u->unit_type->supply_required.raw_value / 2.0;
+				}
+
+				double army_supply = 0.0;
+				for (const unit_t *u : ptr(st.player_units.at(player)))
+				{
+					if (ut_worker(u))
+						continue;
+					if (!u_completed(u))
+						continue;
+					army_supply += u->unit_type->supply_required.raw_value / 2.0;
+				}
+
+				p.minerals = st.current_minerals.at(player);
+				p.gas = st.current_gas.at(player);
+				p.supply = 0;
+				p.supply_max = 0;
+				for (int r = 0; r < 3; r++) {
+					p.supply += st.supply_used.at(player)[r].raw_value / 2.0;
+					p.supply_max += std::min(st.supply_available.at(player)[r].raw_value / 2.0, 200.0);
+				}
+				p.worker_supply = worker_supply;
+				p.army_supply = army_supply;
+				p.apm = apm[player].current_apm;
+			}
+		}
+
 		void reset()
 		{
 			deleted_images.clear();
@@ -78,6 +132,7 @@ namespace bwgame
 			deleted_units.clear();
 			deleted_bullets.clear();
 			played_sounds.clear();
+			player_data.fill({});
 			fow.clear();
 
 			apm = {};

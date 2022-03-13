@@ -1145,6 +1145,9 @@ extern "C" void *get_buffer(int index)
 		return reinterpret_cast<void *>(&m->ui.st.active_bullets);
 	case 7:
 		return reinterpret_cast<void *>(m->ui.deleted_bullets.data());
+	case 8: // player data
+		m->ui.generate_player_data();
+		return reinterpret_cast<void *>(m->ui.player_data.data());
 	default:
 		return nullptr;
 	}
@@ -1179,21 +1182,6 @@ extern "C" int counts(int player, int index)
 		return m->ui.st.current_gas.at(player);
 	case 10:
 		return util_functions(m->ui.st).get_fow_size();
-	// case 10:
-	// 	return m->ui.st.supply_used.at(player)[0].raw_value / 2.0;
-	// case 10:
-	// 	return m->ui.st.supply_used.at(player)[1].raw_value / 2.0;
-	// case 10:
-	// 	return m->ui.st.supply_used.at(player)[2].raw_value / 2.0;
-	case 11:
-		return 0; // @todo implement
-				  // case 11:
-				  // 	return std::min(m->ui.st.supply_available.at(player)[0].raw_value / 2.0, 200.0);
-				  // case 11:
-				  // 	return std::min(m->ui.st.supply_available.at(player)[1].raw_value / 2.0, 200.0);
-				  // case 11:
-				  // 	return std::min(m->ui.st.supply_available.at(player)[2].raw_value / 2.0, 200.0);
-
 	case 12:
 		return util_functions(m->ui.st).worker_supply(player);
 	case 13:
