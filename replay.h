@@ -51,7 +51,7 @@ struct replay_file_reader {
 			size_t segment_output_size = output_size - output_pos;
 			if (segment_output_size > 8192) segment_output_size = 8192;
 			
-			if (segment_input_size > segment_output_size) error("replay_file_reader: output buffer too small");
+			if (segment_input_size > segment_output_size) error("replay_file_reader: output buffer too small %u > %u ",  segment_input_size, segment_output_size);
 			if (segment_input_size == segment_output_size) {
 				r.get_bytes(output + output_pos, segment_input_size);
 			} else {
@@ -71,6 +71,13 @@ struct replay_file_reader {
 	template<typename T, bool little_endian = default_little_endian>
 	T get() {
 		return get_impl<T, little_endian>(*this);
+	}
+
+	template<typename T, bool little_endian, typename self_T>
+	T get_raw(self_T& self) {
+		typename std::aligned_storage<sizeof(T), alignof(T)>::type buf;
+		r.get_bytes(reinterpret_cast<uint8_t*>(&buf), sizeof(T));
+		return value_at<T, little_endian>((uint8_t*)&buf);
 	}
 };
 
@@ -101,11 +108,27 @@ struct replay_functions: action_functions {
 		auto r = data_loading::data_reader_le(data, data + data_size);
 		load_replay(data_loading::make_replay_file_reader(r), initial_processing, get_map_data);
 	}
+
+	const uint32_t MAGIC_CLASSIC = 0x53526572;
+	const uint32_t MAGIC_SCR = 0x53526573;
+	const uint32_t MAGIC_TR = 0x53526577;
+
 	template<typename reader_T>
 	void load_replay(reader_T&& r, bool initial_processing = true, std::vector<uint8_t>* get_map_data = nullptr) {
 		
 		uint32_t identifier = r.template get<uint32_t>();
-		if (identifier != 0x53526572) error("load_replay: invalid identifier %#x", identifier);
+		if (identifier != MAGIC_CLASSIC && identifier != MAGIC_TR) {
+			error("load_replay: invalid identifier %#x", identifier);
+		}
+
+		if (identifier == MAGIC_TR) {
+			// uint32_t scr_section = r.template get_raw<uint32_t>();
+			uint32_t scr_section = r.template get<uint32_t>();
+			// uint32_t container_size = r.template get_raw<uint32_t>();
+			uint32_t container_size = r.template get<uint32_t>();
+			st.units_container = container_size;
+			unit_id::unit_generation_size = container_size == 1700 ? 5 : 3;
+		}
 
 		std::array<uint8_t, 633> game_info_buffer;
 		r.get_bytes(game_info_buffer.data(), game_info_buffer.size());

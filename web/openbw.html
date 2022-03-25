@@ -1,0 +1,39 @@
+<!doctype html>
+<html class="no-js" lang="en-US">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="origin-trial" content="AhjIzi5TzrSkOouJpsGzGS1mVIFGCFWSQeRAeagD8J8k0Uoleihz1SFcs9uXB/iKTB1MQ7n/XakEXg5jbL+LWgsAAABeeyJvcmlnaW4iOiJodHRwOi8vbG9jYWxob3N0OjgwIiwiZmVhdHVyZSI6IlVucmVzdHJpY3RlZFNoYXJlZEFycmF5QnVmZmVyIiwiZXhwaXJ5IjoxNjU4ODc5OTk5fQ==">
+    <link rel='stylesheet' id='main-stylesheet-css' href='/foundation.css' type='text/css' media='all' />
+</head>
+
+<body>
+    <button id="specify_mpqs_button" type="button" class="success button">Specify MPQ
+        Files</button>
+    <label id="select_replay_label" for="select_rep_file" class="success button disabled">Open
+        Replay</label><br />
+    <input id="select_rep_file" type="file" class="show-for-sr" accept=".rep">
+    <label id="download_replay_label" for="download_rep_file" class="success button">Download
+        Replay</label><br />
+    <input id="download_rep_file" type="file" class="show-for-sr" accept=".rep">
+
+    <span id="mpq_specify" >
+        <input id="mpq_files" type="file" multiple />
+        <ul id="list">
+        </ul>
+    </span>
+
+    <script src="/jquery-2.2.4.min.js"></script>
+    <script type='text/javascript'>
+        /* <![CDATA[ */
+        var ajax_object = {
+            "replay_file": null
+        };
+        /* ]]> */
+    </script>
+    <script type="module" src='/titan-loader.js' ></script>
+    <!-- <script type='text/javascript' src='/downgrade.js' type="module"></script> -->
+</body>
+
+</html>

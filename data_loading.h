@@ -1322,6 +1322,7 @@ data_files_loader_T data_files_directory(a_string path) {
 	r.add_mpq_file(path + "Patch_rt.mpq");
 	r.add_mpq_file(path + "BrooDat.mpq");
 	r.add_mpq_file(path + "StarDat.mpq");
+
 	return r;
 }
 

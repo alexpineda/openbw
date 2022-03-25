@@ -335,6 +335,9 @@ struct state_functions {
 	virtual void on_unit_deselect(unit_t* u) {}
 
 	virtual void on_unit_destroy(unit_t* u) {}
+	virtual void on_image_destroy(image_t* u) {}
+	virtual void on_sprite_destroy(sprite_t* u) {}
+	virtual void on_bullet_destroy(bullet_t* u) {}
 	virtual void on_kill_unit(unit_t* u) {}
 
 	virtual void on_player_eliminated(int owner) {}
@@ -636,15 +639,16 @@ struct state_functions {
 		if (!idx) return nullptr;
 		unit_t* u = get_unit(idx - 1);
 		if (!u) return nullptr;
-		if (u->unit_id_generation % (1u << (int_bits<T>::value - 11)) != id.generation()) return nullptr;
+		if (u->unit_id_generation % (1u << (int_bits<T>::value - (16 - unit_id::unit_generation_size))) != id.generation()) return nullptr;
 		return u;
 	}
 
 	unit_id get_unit_id(const unit_t* u) const {
 		if (!u) return unit_id{};
-		return unit_id(u->index + 1, u->unit_id_generation % (1u << 5));
+		return unit_id(u->index + 1, u->unit_id_generation % (1u << unit_id::unit_generation_size));
 	}
 
+	// @todo change this
 	unit_id_32 get_unit_id_32(const unit_t* u) const {
 		if (!u) return unit_id_32{};
 		return unit_id_32(u->index + 1, u->unit_id_generation % (1u << 21));
@@ -12866,7 +12870,7 @@ struct state_functions {
 		}
 	}
 
-	void update_units() {
+void update_units() {
 		--st.order_timer_counter;
 		if (!st.order_timer_counter) {
 			st.order_timer_counter = 150;
@@ -14189,6 +14193,7 @@ struct state_functions {
 
 	void bullet_kill(bullet_t* b) {
 		b->bullet_state = bullet_t::state_dying;
+		on_bullet_destroy(b);
 		sprite_run_anim(b->sprite, iscript_anims::Death);
 	}
 
@@ -14490,6 +14495,7 @@ struct state_functions {
 			return nullptr;
 		}
 		st.bullets_container.pop();
+
 		++st.active_bullets_size;
 		bw_insert_list(st.active_bullets, *b);
 		return b;
@@ -15249,6 +15255,7 @@ struct state_functions {
 		image->grp = nullptr;
 		image->sprite->images.remove(*image);
 		st.images_container.push(image);
+		on_image_destroy(image);
 	}
 
 	enum {
@@ -15291,6 +15298,7 @@ struct state_functions {
 		}
 		remove_sprite_from_tile_line(sprite);
 		st.sprites_container.push(sprite);
+		on_sprite_destroy(sprite);
 	}
 
 	sprite_t* create_sprite(const sprite_type_t* sprite_type, xy pos, int owner) {
@@ -19546,7 +19554,7 @@ struct state_copier {
 	state_functions funcs;
 	state_copier(const state&st, state& r) : st(st), r(r), funcs(r) {}
 
-	std::array<bool, 1700> unit_copied{};
+	std::vector<bool> unit_copied;
 	std::array<bool, 100> bullet_copied{};
 	std::array<bool, 2500> sprite_copied{};
 	std::array<bool, 5000> image_copied{};
@@ -19554,6 +19562,7 @@ struct state_copier {
 	unit_t* unit(const unit_t* v) {
 		size_t index = v->index;
 		auto* u = r.units_container.get(index, false);
+		unit_copied.resize(r.units_container.max_size);
 		if (!unit_copied[index]) {
 			unit_copied[index] = true;
 			memcpy(u, v, sizeof(*v));
@@ -19698,6 +19707,7 @@ struct state_copier {
 
 	void operator()() {
 		(state_base_copyable&)r = (state_base_copyable&)st;
+		r.units_container = st.units_container.max_size;
 
 		assemble(r.free_thingies, st.free_thingies, &state_copier::thingy);
 		assemble(r.active_thingies, st.active_thingies, &state_copier::thingy);
@@ -19722,6 +19732,7 @@ struct state_copier {
 		for (size_t i = 0; i != 12; ++i) {
 			assemble(r.player_units[i], st.player_units[i], &state_copier::unit);
 		}
+		
 		assemble(r.units_container.free_list, st.units_container.free_list, &state_copier::unit);
 		assemble(r.dead_units, st.dead_units, &state_copier::unit);
 		assemble(r.map_revealer_units, st.map_revealer_units, &state_copier::unit);
@@ -19938,7 +19949,8 @@ struct game_load_functions : state_functions {
 		st.dead_units.clear();
 		for (auto& v : st.player_units) v.clear();
 
-		st.units_container = {};
+		// yes this brittle af code :(
+		st.units_container = st.units_container.max_size;
 
 		st.active_bullets_size = 0;
 		st.active_bullets.clear();
@@ -21613,7 +21625,7 @@ struct game_load_functions : state_functions {
 					continue;
 				}
 
-				unit_t* u = create_initial_unit(unit_type, {x, y}, owner);
+				unit_t* u = create_initial_unit(unit_type, { x, y }, owner);
 
 				if (!u) continue;
 
