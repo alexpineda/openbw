@@ -1148,6 +1148,9 @@ extern "C" void *get_buffer(int index)
 	case 8: // player data
 		m->ui.generate_player_data();
 		return reinterpret_cast<void *>(m->ui.player_data.data());
+	case 9:
+		m->ui.generate_production_data();
+		return reinterpret_cast<void *>(m->ui.production_data.data());
 	default:
 		return nullptr;
 	}
