@@ -13635,6 +13635,13 @@ void update_units() {
 			}
 			u->hp = 0_fp8;
 			kill_unit(u);
+
+			if (!source_unit || source_unit->owner == u->owner) return;
+			if (u_in_bunker(source_unit)) {
+				source_unit = source_unit->connected_unit;
+			}
+			source_unit->kill_count++;
+			
 			// todo: units lost scores
 			if (source_unit && unit_target_is_enemy(source_unit, u)) {
 				// todo: kill scores
