@@ -7,7 +7,7 @@
 #include "GifEncoder.h"
 #endif
 
-#include "boop.h"
+#include "titan-reactor.h"
 #include "common.h"
 #include "bwgame.h"
 #include "replay.h"
@@ -83,19 +83,10 @@ struct main_t
 	unit_t *screen_show_unit = NULL;
 	int screen_show_unit_cooldown = 0;
 
-	sprite_t *sprite_dumps[2500];
-	std::map<int, unit_dump_t> unit_dumps;
-
-	void reset_dumps()
-	{
-		unit_dumps.clear();
-	}
-
 	void reset()
 	{
 		saved_states.clear();
 		ui.reset();
-		reset_dumps();
 	}
 
 	bool update()
@@ -493,7 +484,6 @@ extern "C" void replay_set_value(int index, double value)
 			m->ui.replay_frame = 0;
 		if (m->ui.replay_frame > m->ui.replay_st.end_frame)
 			m->ui.replay_frame = m->ui.replay_st.end_frame;
-		m->reset_dumps();
 		break;
 	case 6:
 		m->ui.replay_frame = (int)(m->ui.replay_st.end_frame * value);
@@ -501,7 +491,6 @@ extern "C" void replay_set_value(int index, double value)
 			m->ui.replay_frame = 0;
 		if (m->ui.replay_frame > m->ui.replay_st.end_frame)
 			m->ui.replay_frame = m->ui.replay_st.end_frame;
-		m->reset_dumps();
 		break;
 	}
 }
@@ -539,20 +528,17 @@ struct util_functions : state_functions
 #define STR(a) #a
 #define DUMP_RAW(name, value)     \
 	o.set(STR(name), val(value)); \
-	is_dirty = true;
 
 #define DUMP_VAL(name)                      \
 	{                                       \
 		auto value = decode(dumping->name); \
 		o.set(STR(name), val(value));       \
-		is_dirty = true;                    \
 	}
 
 #define DUMP_VAL_AS(aka, name)              \
 	{                                       \
 		auto value = decode(dumping->name); \
 		o.set(STR(aka), val(value));        \
-		is_dirty = true;                    \
 	}
 
 	template <typename T>
@@ -598,116 +584,68 @@ struct util_functions : state_functions
 		return o;
 	}
 
-	auto dump_unit(unit_t *dumping, const bool dirty_check)
+	// todo dump debug addresses
+	auto dump_unit(int id)
 	{
 		val o = val::object();
 
+		unit_t* dumping = get_unit(unit_id(id));
+
+		if (!dumping)
+		{
+			return o;
+		}
+
 		const int unit_id = decode(dumping);
-		bool is_dirty = false;
-		const auto is_new = std::get<1>(m->unit_dumps.emplace(decode(dumping), unit_dump_t{}));
-		const auto in = m->unit_dumps.find(decode(dumping));
-		unit_dump_t &out = in->second;
-
-		// always set id
-		o.set("_addr", val((size_t)dumping));
 		o.set("id", val(unit_id));
-
-		DUMP_RAW(typeId, (int)dumping->unit_type->id);
-		DUMP_VAL(owner);
-		DUMP_RAW(x, dumping->position.x);
-		DUMP_RAW(y, dumping->position.y);
-		DUMP_VAL(hp);
-		DUMP_VAL(energy);
-		DUMP_VAL_AS(shields, shield_points);
-		DUMP_RAW(spriteIndex, dumping->sprite->index);
-		DUMP_VAL_AS(statusFlags, status_flags);
-		DUMP_RAW(direction, direction_index(dumping->heading));
 
 		if (dumping->unit_type->flags & dumping->unit_type->flag_resource && dumping->status_flags & dumping->status_flag_completed)
 		{
-			// DUMP_RAW(resourceAmount, dumping->building.resource.resource_count);
-			DUMP_RAW(remainingBuildtime, 0);
+			DUMP_RAW(resourceAmount, dumping->building.resource.resource_count);
 		}
-		else
+
+		if (dumping->order_type->id == Orders::Upgrade && dumping->building.upgrading_type)
 		{
-			// DUMP_RAW(resourceAmount, 0);
-			DUMP_VAL_AS(remainingBuildtime, remaining_build_time);
-		}
-
-		if (dumping->current_build_unit)
+			val upgrade = val::object();
+			upgrade.set("id", val((int)dumping->building.upgrading_type->id));
+			upgrade.set("level", val(dumping->building.upgrading_level));
+			upgrade.set("time", val(dumping->building.upgrade_research_time));
+			o.set("upgrade", upgrade);
+		} else if (dumping->order_type->id == Orders::ResearchTech && dumping->building.researching_type)
 		{
-			int remainingTrainTime = ((float)dumping->current_build_unit->remaining_build_time / (float)dumping->current_build_unit->unit_type->build_time) * 255;
-			DUMP_RAW(remainingTrainTime, remainingTrainTime);
-		}
-		else
-		{
-			DUMP_RAW(resourceAmount, 0);
+			val research = val::object();
+			research.set("id", val((int)dumping->building.researching_type->id));
+			research.set("time", val(dumping->building.upgrade_research_time));
+			o.set("research", research);
 		}
 
-		DUMP_VAL_AS(kills, kill_count);
-		DUMP_RAW(order, (int)dumping->order_type->id);
-		DUMP_VAL(subunit);
-		DUMP_VAL_AS(orderState, order_state);
+		int j = 0;
+		val loaded = val::array();
 
-		// for battle visualizations
-		DUMP_VAL_AS(groundWeaponCooldown, ground_weapon_cooldown);
-		DUMP_VAL_AS(airWeaponCooldown, air_weapon_cooldown);
-		DUMP_VAL_AS(spellCooldown, spell_cooldown);
-
-		// might need this for bullets?
-		// o.set("orderTarget", dump_target(&dumping->order_target));
-
-		// for debugging unit tags
-		DUMP_VAL(index);
-		DUMP_VAL(unit_id_generation);
-
-		// maybe?
-		// DUMP_VAL(previous_unit_type);
-		// DUMP_VAL(movement_state);
-		// DUMP_VAL(last_attacking_player);
-
-		val loaded = val::object();
 		for (int i = 0; i < dumping->loaded_units.size(); ++i)
 		{
-			loaded.set(i, dumping->loaded_units[i].raw_value);
-		}
-		// o.set("loaded_units", loaded);
-		return o;
-	}
-
-	uint32_t sprite_depth_order(const sprite_t *sprite) const
-	{
-		uint32_t score = 0;
-		score |= sprite->elevation_level;
-		score <<= 13;
-		score |= sprite->elevation_level <= 4 ? sprite->position.y : 0;
-		score <<= 1;
-		score |= s_flag(sprite, sprite_t::flag_turret) ? 1 : 0;
-		return score;
-	}
-
-	auto sort_sprites()
-	{
-		a_vector<std::pair<uint32_t, const sprite_t *>> sorted_sprites;
-
-		sorted_sprites.clear();
-
-		for (size_t i = 0; i != st.sprites_on_tile_line.size(); ++i)
-		{
-			for (sprite_t *sprite : ptr(st.sprites_on_tile_line[i]))
+			if (dumping->loaded_units[i].raw_value > 0)
 			{
-				if (sprite != nullptr)
-				{
-					if (s_hidden(sprite))
-						continue;
-					sorted_sprites.emplace_back(sprite_depth_order(sprite), sprite);
-				}
+				j++;
+				loaded.set(j, dumping->loaded_units[i].raw_value);
 			}
 		}
+		if (j > 0)
+		{
+			o.set("loaded", loaded);
+		}
 
-		std::sort(sorted_sprites.begin(), sorted_sprites.end());
+		if (dumping->build_queue.size() > 0) {
+			val queue = val::array();
 
-		return sorted_sprites;
+			int i = 0;	
+			for (const unit_type_t* ut : dumping->build_queue) {
+				queue.set(i, val((int)ut->id));
+				i++;
+			}
+			o.set("buildQueue", queue);
+		}
+		return o;
 	}
 
 	double worker_supply(int owner)
@@ -738,63 +676,6 @@ struct util_functions : state_functions
 		return r;
 	}
 
-	auto get_incomplete_units()
-	{
-		val r = val::array();
-		size_t i = 0;
-		for (unit_t *u : ptr(st.visible_units))
-		{
-			if (u_completed(u))
-				continue;
-			r.set(i++, u);
-		}
-		for (unit_t *u : ptr(st.hidden_units))
-		{
-			if (u_completed(u))
-				continue;
-			r.set(i++, u);
-		}
-		return r;
-	}
-
-	auto get_completed_units()
-	{
-		val r = val::array();
-		size_t i = 0;
-		for (unit_t *u : ptr(st.visible_units))
-		{
-			if (!u_completed(u))
-				continue;
-			r.set(i++, u);
-		}
-		for (unit_t *u : ptr(st.hidden_units))
-		{
-			if (!u_completed(u))
-				continue;
-			r.set(i++, u);
-		}
-		return r;
-	}
-
-	auto get_units_debug()
-	{
-		for (auto &i : m->ui.deleted_units)
-		{
-			m->unit_dumps.erase(i);
-		}
-
-		val r = val::array();
-		size_t i = 0;
-		for (int owner = 0; owner < 12; owner++)
-		{
-			for (unit_t *u : ptr(st.player_units[owner]))
-			{
-				r.set(i++, dump_unit(u, false));
-			}
-		}
-		return r;
-	}
-
 	auto get_sounds()
 	{
 		val r = val::array();
@@ -802,157 +683,6 @@ struct util_functions : state_functions
 		for (auto sound : ptr(m->ui.played_sounds))
 		{
 			r.set(i++, dump_sound(sound));
-		}
-		return r;
-	}
-
-	std::pair<val, bool> dump_image(image_t *dumping, const bool dirty_check, int order)
-	{
-		val o = val::object();
-		o.set("index", val(dumping->index));
-
-		bool is_dirty = false;
-
-		o.set("_addr", val((size_t)dumping));
-		DUMP_RAW(typeId, (int)dumping->image_type->id);
-		DUMP_VAL(flags);
-
-		DUMP_RAW(order, order);
-		DUMP_RAW(x, decode(dumping->offset.x));
-		DUMP_RAW(y, decode(dumping->offset.y));
-
-		DUMP_VAL(modifier);
-		DUMP_VAL_AS(modifierData1, modifier_data1);
-		DUMP_VAL_AS(frameIndex, frame_index);
-		DUMP_VAL_AS(frameIndexOffset, frame_index_offset);
-		DUMP_VAL_AS(frameIndexBase, frame_index_base);
-		return std::make_pair(o, is_dirty);
-	}
-
-	auto dump_sprite(sprite_t *dumping, const bool dirty_check)
-	{
-
-		val o = val::object();
-		bool is_dirty = false;
-
-		o.set("index", val(dumping->index));
-		o.set("_addr", val((size_t)dumping));
-
-		// DUMP_VAL(index);
-		DUMP_RAW(typeId, (int)dumping->sprite_type->id);
-		DUMP_VAL(owner);
-		DUMP_VAL_AS(elevation, elevation_level);
-		DUMP_VAL(flags);
-		DUMP_RAW(mainImageIndex, dumping->main_image->index);
-
-		DUMP_RAW(x, decode(dumping->position.x));
-		DUMP_RAW(y, decode(dumping->position.y));
-
-		int image_count = 0;
-		for (auto image : ptr(dumping->images))
-		{
-			image_count++;
-		}
-
-		val r = val::array();
-		size_t i = 0;
-		for (auto image : ptr(dumping->images))
-		{
-			auto img = dump_image(image, dirty_check, image_count - i);
-			r.set(i++, std::get<0>(img));
-		}
-		o.set("images", r);
-		return o;
-	}
-
-	auto get_sprites_debug()
-	{
-		val r = val::array();
-		size_t x = 0;
-
-		for (size_t i = 0; i != st.sprites_on_tile_line.size(); ++i)
-		{
-			for (sprite_t *sprite : ptr(st.sprites_on_tile_line[i]))
-			{
-				if (sprite != nullptr)
-				{
-					r.set(x++, dump_sprite(sprite, false));
-				}
-			}
-		}
-
-		return r;
-	}
-
-	auto get_completed_upgrades(int owner)
-	{
-		val r = val::array();
-		size_t n = 0;
-		for (size_t i = 0; i != 61; ++i)
-		{
-			int level = player_upgrade_level(owner, (UpgradeTypes)i);
-			if (level == 0)
-				continue;
-			val o = val::object();
-			o.set("id", val((int)i));
-			o.set("icon", val(get_upgrade_type((UpgradeTypes)i)->icon));
-			o.set("level", val(level));
-			r.set(n++, o);
-		}
-		return r;
-	}
-
-	auto get_completed_research(int owner)
-	{
-		val r = val::array();
-		size_t n = 0;
-		for (size_t i = 0; i != 44; ++i)
-		{
-			if (!player_has_researched(owner, (TechTypes)i))
-				continue;
-			val o = val::object();
-			o.set("id", val((int)i));
-			o.set("icon", val(get_tech_type((TechTypes)i)->icon));
-			r.set(n++, o);
-		}
-		return r;
-	}
-
-	auto get_incomplete_upgrades(int owner)
-	{
-		val r = val::array();
-		size_t i = 0;
-		for (unit_t *u : ptr(st.player_units[owner]))
-		{
-			if (u->order_type->id == Orders::Upgrade && u->building.upgrading_type)
-			{
-				val o = val::object();
-				o.set("id", val((int)u->building.upgrading_type->id));
-				o.set("icon", val((int)u->building.upgrading_type->icon));
-				o.set("level", val(u->building.upgrading_level));
-				o.set("remaining_time", val(u->building.upgrade_research_time));
-				o.set("total_time", val(upgrade_time_cost(owner, u->building.upgrading_type)));
-				r.set(i++, o);
-			}
-		}
-		return r;
-	}
-
-	auto get_incomplete_research(int owner)
-	{
-		val r = val::array();
-		size_t i = 0;
-		for (unit_t *u : ptr(st.player_units[owner]))
-		{
-			if (u->order_type->id == Orders::ResearchTech && u->building.researching_type)
-			{
-				val o = val::object();
-				o.set("id", val((int)u->building.researching_type->id));
-				o.set("icon", val((int)u->building.researching_type->icon));
-				o.set("remaining_time", val(u->building.upgrade_research_time));
-				o.set("total_time", val(u->building.researching_type->research_time));
-				r.set(i++, o);
-			}
 		}
 		return r;
 	}
@@ -990,87 +720,6 @@ struct util_functions : state_functions
 		return r;
 	}
 
-	auto count_units()
-	{
-		int unit_count = 0;
-		for (int owner = 0; owner < 12; owner++)
-		{
-			for (unit_t *u : ptr(st.player_units[owner]))
-			{
-				unit_count++;
-			}
-		}
-		return unit_count;
-	}
-
-	auto count_research()
-	{
-		int research_count = 0;
-		for (int owner = 0; owner < 12; owner++)
-		{
-			for (unit_t *u : ptr(st.player_units[owner]))
-			{
-				if (u->order_type->id == Orders::ResearchTech && u->building.researching_type)
-				{
-					research_count++;
-				}
-			}
-		}
-		return research_count;
-	}
-
-	auto count_upgrades()
-	{
-		int upgrade_count = 0;
-		for (int owner = 0; owner < 12; owner++)
-		{
-			for (unit_t *u : ptr(st.player_units[owner]))
-			{
-
-				if (u->order_type->id == Orders::Upgrade && u->building.upgrading_type)
-				{
-					upgrade_count++;
-				}
-			}
-		}
-		return upgrade_count;
-	}
-
-	auto count_images()
-	{
-		int image_count = 0;
-		for (auto &v : sort_sprites())
-		{
-			for (const image_t *image : ptr(v.second->images))
-			{
-				image_count++;
-			}
-		}
-		return image_count;
-	}
-
-	auto count_building_queue()
-	{
-		int build_queue_count = 0;
-		for (unit_t *u : ptr(st.visible_units))
-		{
-			if (u->build_queue.size() > 0)
-			{
-				build_queue_count++;
-			}
-
-			// loaded units included in queue count
-			for (bwgame::unit_id uid : u->loaded_units)
-			{
-				if (uid.raw_value != 0)
-				{
-					build_queue_count++;
-					break;
-				}
-			}
-		}
-		return build_queue_count;
-	}
 
 	int get_fow_size()
 	{
@@ -1106,17 +755,8 @@ EMSCRIPTEN_BINDINGS(openbw)
 	function("getExceptionMessage", &getExceptionMessage);
 
 	class_<util_functions>("util_functions")
-		.function("worker_supply", &util_functions::worker_supply)
-		.function("army_supply", &util_functions::army_supply)
-		.function("get_incomplete_units", &util_functions::get_incomplete_units, allow_raw_pointers())
-		.function("get_completed_units", &util_functions::get_completed_units, allow_raw_pointers())
-		.function("get_units_debug", &util_functions::get_units_debug, allow_raw_pointers())
-		.function("get_completed_upgrades", &util_functions::get_completed_upgrades)
-		.function("get_completed_research", &util_functions::get_completed_research)
-		.function("get_incomplete_upgrades", &util_functions::get_incomplete_upgrades)
-		.function("get_incomplete_research", &util_functions::get_incomplete_research)
 		.function("get_sounds", &util_functions::get_sounds)
-		.function("get_sprites_debug", &util_functions::get_sprites_debug, allow_raw_pointers());
+		.function("dump_unit", &util_functions::dump_unit, allow_raw_pointers());
 
 	function("get_util_funcs", &get_util_funcs);
 }
@@ -1156,39 +796,36 @@ extern "C" void *get_buffer(int index)
 	}
 }
 
-extern "C" int counts(int player, int index)
+extern "C" int counts(int index)
 {
-	if (player < 0 || player >= 12)
-		return 0;
-
 	switch (index)
 	{
 	case 0: // tiles
 		return m->ui.st.tiles.size();
 	case 1: // unit count
-		return util_functions(m->ui.st).count_units();
+		return 0;
 	case 2: // upgrade count
-		return util_functions(m->ui.st).count_upgrades();
+		return 0;
 	case 3: // research count
-		return util_functions(m->ui.st).count_research();
+		return 0;
 	case 4: // sprite count
-		return util_functions(m->ui.st).sort_sprites().size();
+		return 0;
 	case 5: // image count
-		return util_functions(m->ui.st).count_images();
+		return 0;
 	case 6: // sound count
 		return (int)m->ui.played_sounds.size();
 	case 7: // building queue count
-		return util_functions(m->ui.st).count_building_queue();
+		return 0;
 	case 8:
-		return m->ui.st.current_minerals.at(player);
+		return 0;
 	case 9:
-		return m->ui.st.current_gas.at(player);
+		return 0;
 	case 10:
 		return util_functions(m->ui.st).get_fow_size();
 	case 12:
-		return util_functions(m->ui.st).worker_supply(player);
+		return 0;
 	case 13:
-		return util_functions(m->ui.st).army_supply(player);
+		return 0;
 	case 14:
 		return m->ui.st.sprites_on_tile_line.size();
 	case 15:
@@ -1220,14 +857,22 @@ extern "C" uint8_t *get_fow_ptr(uint8_t player_visibility, bool instant)
 			v = 255;
 		}
 
-		if (v > m->ui.fow[i])
+		if (instant)
 		{
-			m->ui.fow[i] = std::min(v, m->ui.fow[i] + 10);
+			m->ui.fow[i] = v;
 		}
-		else if (v < m->ui.fow[i])
+		else
 		{
-			m->ui.fow[i] = std::max(v, m->ui.fow[i] - 5);
+			if (v > m->ui.fow[i])
+			{
+				m->ui.fow[i] = std::min(v, m->ui.fow[i] + 10);
+			}
+			else if (v < m->ui.fow[i])
+			{
+				m->ui.fow[i] = std::max(v, m->ui.fow[i] - 5);
+			}
 		}
+
 		i++;
 	}
 	return m->ui.fow.data();
@@ -1238,11 +883,6 @@ bool any_replay_loaded = false;
 extern "C" int next_frame()
 {
 	m->update();
-
-#ifdef EMSCRIPTEN
-	MAIN_THREAD_EM_ASM({ js_callbacks.js_post_main_loop(); });
-#endif
-
 	return m->ui.st.current_frame;
 }
 
