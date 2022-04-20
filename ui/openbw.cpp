@@ -604,6 +604,10 @@ struct util_functions : state_functions
 			DUMP_RAW(resourceAmount, dumping->building.resource.resource_count);
 		}
 
+		if (dumping->current_build_unit) {
+			o.set("remainingTrainTime", (float)dumping->current_build_unit->remaining_build_time / (float)dumping->current_build_unit->unit_type->build_time);
+		}
+
 		if (dumping->order_type->id == Orders::Upgrade && dumping->building.upgrading_type)
 		{
 			val upgrade = val::object();
