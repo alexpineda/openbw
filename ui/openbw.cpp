@@ -630,8 +630,15 @@ struct util_functions : state_functions
 		{
 			if (dumping->loaded_units[i].raw_value > 0)
 			{
-				j++;
-				loaded.set(j, dumping->loaded_units[i].raw_value);
+				unit_t* u = get_unit(dumping->loaded_units[i]);
+				if (u) {
+					j++;
+					val uo = val::object();
+					uo.set("id", (int)dumping->loaded_units[i].raw_value);
+					uo.set("typeId", (int)u->unit_type->id);
+					uo.set("hp", decode(u->hp));
+					loaded.set(j, uo);
+				}
 			}
 		}
 		if (j > 0)
