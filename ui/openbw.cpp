@@ -526,8 +526,8 @@ struct util_functions : state_functions
 	util_functions(state &st) : state_functions(st) {}
 
 #define STR(a) #a
-#define DUMP_RAW(name, value)     \
-	o.set(STR(name), val(value)); \
+#define DUMP_RAW(name, value) \
+	o.set(STR(name), val(value));
 
 #define DUMP_VAL(name)                      \
 	{                                       \
@@ -589,7 +589,7 @@ struct util_functions : state_functions
 	{
 		val o = val::object();
 
-		unit_t* dumping = get_unit(unit_id(id));
+		unit_t *dumping = get_unit(unit_id(id));
 
 		if (!dumping)
 		{
@@ -604,7 +604,8 @@ struct util_functions : state_functions
 			DUMP_RAW(resourceAmount, dumping->building.resource.resource_count);
 		}
 
-		if (dumping->current_build_unit) {
+		if (dumping->current_build_unit)
+		{
 			o.set("remainingTrainTime", (float)dumping->current_build_unit->remaining_build_time / (float)dumping->current_build_unit->unit_type->build_time);
 		}
 
@@ -615,7 +616,8 @@ struct util_functions : state_functions
 			upgrade.set("level", val(dumping->building.upgrading_level));
 			upgrade.set("time", val(dumping->building.upgrade_research_time));
 			o.set("upgrade", upgrade);
-		} else if (dumping->order_type->id == Orders::ResearchTech && dumping->building.researching_type)
+		}
+		else if (dumping->order_type->id == Orders::ResearchTech && dumping->building.researching_type)
 		{
 			val research = val::object();
 			research.set("id", val((int)dumping->building.researching_type->id));
@@ -630,14 +632,15 @@ struct util_functions : state_functions
 		{
 			if (dumping->loaded_units[i].raw_value > 0)
 			{
-				unit_t* u = get_unit(dumping->loaded_units[i]);
-				if (u) {
-					j++;
+				unit_t *u = get_unit(dumping->loaded_units[i]);
+				if (u)
+				{
 					val uo = val::object();
 					uo.set("id", (int)dumping->loaded_units[i].raw_value);
 					uo.set("typeId", (int)u->unit_type->id);
 					uo.set("hp", decode(u->hp));
 					loaded.set(j, uo);
+					j++;
 				}
 			}
 		}
@@ -646,11 +649,13 @@ struct util_functions : state_functions
 			o.set("loaded", loaded);
 		}
 
-		if (dumping->build_queue.size() > 0) {
+		if (dumping->build_queue.size() > 0)
+		{
 			val queue = val::array();
 
-			int i = 0;	
-			for (const unit_type_t* ut : dumping->build_queue) {
+			int i = 0;
+			for (const unit_type_t *ut : dumping->build_queue)
+			{
 				queue.set(i, val((int)ut->id));
 				i++;
 			}
@@ -730,7 +735,6 @@ struct util_functions : state_functions
 		}
 		return r;
 	}
-
 
 	int get_fow_size()
 	{
