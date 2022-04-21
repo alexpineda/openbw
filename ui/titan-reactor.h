@@ -30,6 +30,7 @@ namespace bwgame
 	{
 		int id;
 		int count;
+		int progress;
 	};
 
 	struct upgrade_in_production_t
@@ -40,11 +41,19 @@ namespace bwgame
 
 		upgrade_in_production_t(int id, const int level, const int progress) : id(id), level(level), progress(progress) {}
 	};
+
+	struct research_in_production_t
+	{
+		int id;
+		int progress;
+
+		research_in_production_t(int id, const int progress) : id(id), progress(progress) {}
+	};
 	struct production_data_t
 	{
 		std::vector<unit_in_production_t> units_in_production;
 		std::vector<upgrade_in_production_t> upgrades_in_production;
-		std::vector<unit_in_production_t> research_in_production;
+		std::vector<research_in_production_t> research_in_production;
 	};
 
 	struct titan_replay_functions : ui_functions
@@ -154,7 +163,6 @@ namespace bwgame
 			{
 				const int pos = player * 8;
 				auto &p = production_data[player];
-				std::unordered_map<int, int> u_in_production;
 
 				p.units_in_production.clear();
 				p.upgrades_in_production.clear();
@@ -162,17 +170,32 @@ namespace bwgame
 
 				for (const unit_t *u : ptr(st.player_units.at(player)))
 				{
+
 					// incomplete units + count
 					if (!u_completed(u))
 					{
-						auto o = u_in_production.find((int)u->unit_type->id);
-						if (o == u_in_production.end())
+						bool found = false;
+						for (auto &o : p.units_in_production)
 						{
-							u_in_production[(int)u->unit_type->id] = 1;
+							if (o.id == (int)u->unit_type->id)
+							{
+								o.count++;
+								if (u->remaining_build_time < o.progress)
+								{
+									o.progress = u->remaining_build_time;
+								}
+								found = true;
+								break;
+							}
 						}
-						else
+
+						if (found == false)
 						{
-							o->second++;
+							unit_in_production_t ip;
+							ip.id = (int)u->unit_type->id;
+							ip.count = 1;
+							ip.progress = u->remaining_build_time;
+							p.units_in_production.push_back(ip);
 						}
 					}
 					else
@@ -188,7 +211,7 @@ namespace bwgame
 						// incomplete research
 						if (u->order_type->id == Orders::ResearchTech && u->building.researching_type)
 						{
-							unit_in_production_t uip{(int)u->building.researching_type->id, u->building.upgrade_research_time};
+							research_in_production_t uip{(int)u->building.researching_type->id, u->building.upgrade_research_time};
 							p.research_in_production.push_back(uip);
 						}
 					}
@@ -209,16 +232,8 @@ namespace bwgame
 				{
 					if (!player_has_researched(player, (TechTypes)i))
 						continue;
-					unit_in_production_t uip{(int)i, 0};
+					research_in_production_t uip{(int)i, 0};
 					p.research_in_production.push_back(uip);
-				}
-
-				for (auto &o : u_in_production)
-				{
-					unit_in_production_t ip;
-					ip.id = o.first;
-					ip.count = o.second;
-					p.units_in_production.push_back(ip);
 				}
 			}
 		}
