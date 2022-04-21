@@ -1,6 +1,7 @@
 
 #include "common.h"
 #include "drawing.h"
+#include "../bwenums.h"
 #include "../bwgame.h"
 #include "../replay.h"
 
@@ -157,8 +158,24 @@ namespace bwgame
 			}
 		}
 
+		int get_unit_type_id(const unit_t *u)
+		{
+			if (u->order_type->id == Orders::ZergBirth ||
+				u->order_type->id == Orders::ZergBuildingMorph ||
+				u->order_type->id == Orders::ZergUnitMorph ||
+				u->order_type->id == Orders::IncompleteMorphing)
+			{
+				return (int)u->build_queue[0]->id;
+			}
+			else
+			{
+				return (int)u->unit_type->id;
+			}
+		}
+
 		void generate_production_data()
 		{
+
 			for (int player = 0; player < 8; player++)
 			{
 				const int pos = player * 8;
@@ -177,7 +194,7 @@ namespace bwgame
 						bool found = false;
 						for (auto &o : p.units_in_production)
 						{
-							if (o.id == (int)u->unit_type->id)
+							if (o.id == get_unit_type_id(u))
 							{
 								o.count++;
 								if (u->remaining_build_time < o.progress)
@@ -192,7 +209,7 @@ namespace bwgame
 						if (found == false)
 						{
 							unit_in_production_t ip;
-							ip.id = (int)u->unit_type->id;
+							ip.id = get_unit_type_id(u);
 							ip.count = 1;
 							ip.progress = u->remaining_build_time;
 							p.units_in_production.push_back(ip);
