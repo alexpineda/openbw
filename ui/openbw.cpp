@@ -96,6 +96,7 @@ struct main_t
 		ui.deleted_sprites.clear();
 		ui.deleted_units.clear();
 		ui.deleted_bullets.clear();
+		ui.linked_sprites.clear();
 
 		auto now = clock.now();
 
@@ -806,6 +807,8 @@ extern "C" void *get_buffer(int index)
 	case 9:
 		m->ui.generate_production_data();
 		return reinterpret_cast<void *>(m->ui.production_data.data());
+	case 10: 
+		return reinterpret_cast<void *>(m->ui.linked_sprites.data());
 	default:
 		return nullptr;
 	}
@@ -817,8 +820,8 @@ extern "C" int counts(int index)
 	{
 	case 0: // tiles
 		return m->ui.st.tiles.size();
-	case 1: // unit count
-		return 0;
+	case 1:  // linked sprites
+		return m->ui.linked_sprites.size();
 	case 2: // upgrade count
 		return 0;
 	case 3: // research count

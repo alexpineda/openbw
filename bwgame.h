@@ -339,6 +339,7 @@ struct state_functions {
 	virtual void on_sprite_destroy(sprite_t* u) {}
 	virtual void on_bullet_destroy(bullet_t* u) {}
 	virtual void on_kill_unit(unit_t* u) {}
+	virtual void on_sprite_link(sprite_t* parent, sprite_t* u) {}
 
 	virtual void on_player_eliminated(int owner) {}
 	virtual void on_victory_state(int owner, int state) {}
@@ -14570,6 +14571,7 @@ void update_units() {
 		if (!t) return nullptr;
 		t->sprite->elevation_level = elevation_level;
 		if (!us_hidden(t)) set_sprite_visibility(t->sprite, tile_visibility(t->sprite->position));
+		on_sprite_link(parent_image->sprite, t->sprite);
 		return t;
 	}
 
