@@ -1453,6 +1453,29 @@ struct state_functions {
 		return false;
 	}
 
+	bool unit_is_door(unit_type_autocast ut) const{
+		if (unit_is(ut, UnitTypes::Special_Upper_Level_Door)) return true;
+		if (unit_is(ut, UnitTypes::Special_Right_Upper_Level_Door)) return true;
+		if (unit_is(ut, UnitTypes::Special_Pit_Door)) return true;
+		if (unit_is(ut, UnitTypes::Special_Right_Pit_Door)) return true;
+		return false;
+	}
+
+	bool unit_is_floor_trap(unit_type_autocast ut) const {
+		if (unit_is(ut, UnitTypes::Special_Floor_Gun_Trap)) return true;
+		if (unit_is(ut, UnitTypes::Special_Floor_Missile_Trap)) return true;
+		return false;
+	}
+
+    bool unit_is_wall_trap(unit_type_autocast ut) const {
+		if (unit_is(ut, UnitTypes::Special_Right_Wall_Flame_Trap)) return true;
+		if (unit_is(ut, UnitTypes::Special_Right_Wall_Missile_Trap)) return true;
+		if (unit_is(ut, UnitTypes::Special_Wall_Flame_Trap)) return true;
+		if (unit_is(ut, UnitTypes::Special_Wall_Missile_Trap)) return true;
+		return false;
+
+    }
+
 	bool unit_is_undetected(const unit_t* u, int owner) const {
 		if (!u_cloaked(u) && !u_requires_detector(u)) return false;
 		if (u->detected_flags & (1 << owner)) return false;
@@ -13014,6 +13037,28 @@ void update_units() {
 		}
 	}
 
+	void set_cloak_status(unit_t* u, unsigned cloak_status) {
+		u->status_flags ^= (u->status_flags ^ (cloak_status << 8)) & (unit_t::status_flag_cloaked | unit_t::status_flag_requires_detector);
+	}
+
+	void init_disable_doodad(unit_t* u) {
+		if (unit_is_disabled(u)) return;
+	
+		u_set_status_flag(u, unit_t::status_flag_disabled);
+		sprite_run_anim(u->sprite, iscript_anims::AlmostBuilt);
+		u_set_status_flag(u, unit_t::status_flag_no_collide);
+
+		if (unit_is_door(u) || unit_is_floor_trap(u)) {
+			u->sprite->elevation_level = 1;
+		} 
+		
+		if (unit_is_wall_trap(u) || unit_is_floor_trap(u) ) {
+			set_cloak_status(u, 3u);
+			u->detected_flags  = 0x80000000;
+			u->secondary_order_timer = 0;
+		}
+	}
+
 	void recede_creep() {
 		if (st.creep_life.recede_timer) {
 			--st.creep_life.recede_timer;
@@ -21422,8 +21467,10 @@ struct game_load_functions : state_functions {
 					if (unit_type == UnitTypes::Special_Pit_Door) owner = 11;
 					if (unit_type == UnitTypes::Special_Right_Pit_Door) owner = 11;
 					if (use_map_settings || owner == 11) {
-						create_initial_unit(get_unit_type(unit_type), xy(x, y), owner);
-						if (flags & 0x80) error("disable thingy unit");
+						auto u = create_initial_unit(get_unit_type(unit_type), xy(x, y), owner);
+						if (flags & 0x80) {
+							init_disable_doodad(u);
+						}
 					}
 				}
 			}
