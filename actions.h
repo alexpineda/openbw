@@ -1357,6 +1357,9 @@ struct action_functions: state_functions {
 	template<typename reader_T>
 	bool read_action(reader_T&& r) {
 		int player_id = r.template get<uint8_t>();
+		if (player_id == 128) {
+			player_id = action_st.player_id.at(0);
+		}
 		auto i = std::find(action_st.player_id.begin(), action_st.player_id.end(), player_id);
 		if (i == action_st.player_id.end()) error("execute_action: player id %d not found", player_id);
 		int owner = (int)(i - action_st.player_id.begin());
