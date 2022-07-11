@@ -4,7 +4,7 @@
 #include <emscripten.h>
 #endif
 
-#include "boop.h"
+#include "titan-reactor.h"
 #include "common.h"
 #include "bwgame.h"
 #include "replay.h"

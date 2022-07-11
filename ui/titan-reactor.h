@@ -121,8 +121,6 @@ namespace bwgame
 			if (sprite->sprite_type->id == SpriteTypes::SPRITEID_Halo_Rockets_Trail || sprite->sprite_type->id == SpriteTypes::SPRITEID_Longbolt_Gemini_Missiles_Trail)
 			{
 				linked_sprites.push_back({(int)parent->index, (int)sprite->index});
-				// linked_sprites.push_back((int)parent->index);
-				// linked_sprites.push_back((int)sprite->index);
 			}
 		}
 

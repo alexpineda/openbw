@@ -19043,6 +19043,8 @@ void update_units() {
 	};
 
 	bool execute_trigger_action(execute_trigger_struct& ets, int owner, running_trigger& rt, running_trigger::action& ra, const trigger::action& a) {
+		
+
 		switch (a.type) {
 		case 1: // victory
 			if (st.players[owner].controller == player_t::controller_occupied || st.players[owner].controller == player_t::controller_computer_game) {
@@ -19302,6 +19304,27 @@ void update_units() {
 				set_unit_resources(u, a.group2_n);
 			}
 			return true;
+		case 57: {
+			int alliance = a.extra_n;
+			if (alliance < 0 || alliance > 2) alliance = 0;
+			for (int p : trigger_players(owner, a.group_n)) {
+				st.alliances[owner][p] = alliance;
+			}
+
+			// This code snippet is update_alliance_units_g(owner);
+			// It's the same snippet inlined in openbw's action_set_alliances
+			for (unit_t* u : ptr(st.player_units[owner])) {
+				if (u->order_target.unit && u->order_type->targets_enemies) {
+					if (st.alliances[owner][u->order_target.unit->owner] && !unit_target_is_enemy(u, u->order_target.unit)) {
+						u->order_target.unit = nullptr;
+					}
+				}
+			}
+
+			//if (owner == g_LocalNationID) // ??
+			//  CUnitColor_update_g();    // This code not actually used in openbw's action_set_alliances, so not needed?
+			return true;
+		}
 		default:
 			error("unknown trigger action %d", a.type);
 			return false;
