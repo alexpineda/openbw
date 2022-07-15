@@ -575,16 +575,6 @@ struct util_functions : state_functions
 		return f.get_unit_id(unit).raw_value;
 	}
 
-	val dump_sound(played_sound_t *dumping)
-	{
-		val o = val::object();
-		o.set("typeId", val(dumping->id));
-		o.set("x", val(dumping->x));
-		o.set("y", val(dumping->y));
-		o.set("unitTypeId", val(dumping->unit_type_id));
-		return o;
-	}
-
 	// todo dump debug addresses
 	auto dump_unit(int id)
 	{
@@ -665,78 +655,6 @@ struct util_functions : state_functions
 		return o;
 	}
 
-	double worker_supply(int owner)
-	{
-		double r = 0.0;
-		for (const unit_t *u : ptr(st.player_units.at(owner)))
-		{
-			if (!ut_worker(u))
-				continue;
-			if (!u_completed(u))
-				continue;
-			r += u->unit_type->supply_required.raw_value / 2.0;
-		}
-		return r;
-	}
-
-	double army_supply(int owner)
-	{
-		double r = 0.0;
-		for (const unit_t *u : ptr(st.player_units.at(owner)))
-		{
-			if (ut_worker(u))
-				continue;
-			if (!u_completed(u))
-				continue;
-			r += u->unit_type->supply_required.raw_value / 2.0;
-		}
-		return r;
-	}
-
-	auto get_sounds()
-	{
-		val r = val::array();
-		size_t i = 0;
-		for (auto sound : ptr(m->ui.played_sounds))
-		{
-			r.set(i++, dump_sound(sound));
-		}
-		return r;
-	}
-
-	auto get_deleted_sprites()
-	{
-		val r = val::array();
-		size_t i = 0;
-		for (auto &id : m->ui.deleted_sprites)
-		{
-			r.set(i++, val(id));
-		}
-		return r;
-	}
-
-	auto get_deleted_images()
-	{
-		val r = val::array();
-		size_t i = 0;
-		for (auto &id : m->ui.deleted_images)
-		{
-			r.set(i++, val(id));
-		}
-		return r;
-	}
-
-	auto get_deleted_units()
-	{
-		val r = val::array();
-		size_t i = 0;
-		for (auto &id : m->ui.deleted_units)
-		{
-			r.set(i++, val(id));
-		}
-		return r;
-	}
-
 	int get_fow_size()
 	{
 		if (m->ui.fow.size() != m->ui.st.tiles.size())
@@ -771,7 +689,6 @@ EMSCRIPTEN_BINDINGS(openbw)
 	function("getExceptionMessage", &getExceptionMessage);
 
 	class_<util_functions>("util_functions")
-		.function("get_sounds", &util_functions::get_sounds)
 		.function("dump_unit", &util_functions::dump_unit, allow_raw_pointers());
 
 	function("get_util_funcs", &get_util_funcs);
@@ -807,8 +724,10 @@ extern "C" void *get_buffer(int index)
 	case 9:
 		m->ui.generate_production_data();
 		return reinterpret_cast<void *>(m->ui.production_data.data());
-	case 10: 
+	case 10:
 		return reinterpret_cast<void *>(m->ui.linked_sprites.data());
+	case 11:
+		return reinterpret_cast<void *>(m->ui.played_sounds.data());
 	default:
 		return nullptr;
 	}
@@ -820,7 +739,7 @@ extern "C" int counts(int index)
 	{
 	case 0: // tiles
 		return m->ui.st.tiles.size();
-	case 1:  // linked sprites
+	case 1: // linked sprites
 		return m->ui.linked_sprites.size();
 	case 2: // upgrade count
 		return 0;
