@@ -296,17 +296,17 @@ struct state_base_non_copyable {
 	intrusive_list<unit_t, void, &unit_t::cloaked_unit_link> cloaked_units;
 	intrusive_list<unit_t, psionic_matrix_link_f> psionic_matrix_units;
 
-	object_container<unit_t, 1700, 17> units_container;
+	object_container<unit_t, 17> units_container;
 
 	intrusive_list<bullet_t, default_link_f> active_bullets;
-	object_container<bullet_t, 100, 10> bullets_container;
+	object_container<bullet_t, 10> bullets_container;
 
 	a_vector<intrusive_list<sprite_t, default_link_f>> sprites_on_tile_line;
-	object_container<sprite_t, 2500, 25> sprites_container;
+	object_container<sprite_t, 25> sprites_container;
 
-	object_container<image_t, 5000, 50> images_container;
+	object_container<image_t, 50> images_container;
 
-	object_container<order_t, 2000, 20> orders_container;
+	object_container<order_t, 20> orders_container;
 
 	intrusive_list<path_t, default_link_f> free_paths;
 	a_list<path_t> paths;
@@ -19632,10 +19632,11 @@ struct state_copier {
 	state_copier(const state&st, state& r) : st(st), r(r), funcs(r) {}
 
 	std::vector<bool> unit_copied;
-	std::array<bool, 100> bullet_copied{};
-	std::array<bool, 2500> sprite_copied{};
-	std::array<bool, 5000> image_copied{};
-	std::array<bool, 2000> order_copied{};
+	std::vector<bool> bullet_copied{};
+	std::vector<bool> sprite_copied{};
+	std::vector<bool> image_copied{};
+	std::vector<bool> order_copied{};
+
 	unit_t* unit(const unit_t* v) {
 		size_t index = v->index;
 		auto* u = r.units_container.get(index, false);
@@ -19695,6 +19696,7 @@ struct state_copier {
 		if (!v) return nullptr;
 		size_t index = v->index;
 		auto* rv = r.bullets_container.get(index, false);
+		bullet_copied.resize(r.bullets_container.max_size);
 		if (!bullet_copied[index]) {
 			bullet_copied[index] = true;
 			memcpy(rv, v, sizeof(*v));
@@ -19710,6 +19712,7 @@ struct state_copier {
 		if (!v) return nullptr;
 		size_t index = v->index;
 		auto* rv = r.sprites_container.get(index, false);
+		sprite_copied.resize(r.sprites_container.max_size);
 		if (!sprite_copied[index]) {
 			sprite_copied[index] = true;
 			memcpy(rv, v, sizeof(*v));
@@ -19726,6 +19729,7 @@ struct state_copier {
 		if (!v) return nullptr;
 		size_t index = v->index;
 		auto* rv = r.images_container.get(index, false);
+		image_copied.resize(r.images_container.max_size);
 		if (!image_copied[index]) {
 			image_copied[index] = true;
 			*rv = *v;
@@ -19741,6 +19745,7 @@ struct state_copier {
 		if (!v) return nullptr;
 		size_t index = v->index;
 		auto* rv = r.orders_container.get(index, false);
+		order_copied.resize(r.orders_container.max_size);
 		if (!order_copied[index]) {
 			order_copied[index] = true;
 			*rv = *v;
@@ -19785,6 +19790,10 @@ struct state_copier {
 	void operator()() {
 		(state_base_copyable&)r = (state_base_copyable&)st;
 		r.units_container = st.units_container.max_size;
+		r.bullets_container = st.bullets_container.max_size;
+		r.sprites_container = st.sprites_container.max_size;
+		r.images_container = st.images_container.max_size;
+		r.orders_container = st.orders_container.max_size;
 
 		assemble(r.free_thingies, st.free_thingies, &state_copier::thingy);
 		assemble(r.active_thingies, st.active_thingies, &state_copier::thingy);
@@ -20026,21 +20035,21 @@ struct game_load_functions : state_functions {
 		st.dead_units.clear();
 		for (auto& v : st.player_units) v.clear();
 
-		// yes this brittle af code :(
+		// TODO: DM - see if there is a less brittle way
 		st.units_container = st.units_container.max_size;
 
 		st.active_bullets_size = 0;
 		st.active_bullets.clear();
-		st.bullets_container = {};
+		st.bullets_container = st.bullets_container.max_size;
 
-		st.sprites_container = {};
+		st.sprites_container = st.sprites_container.max_size;
 		st.sprites_on_tile_line.clear();
 		st.sprites_on_tile_line.resize(game_st.map_tile_height);
 
-		st.images_container = {};
+		st.images_container = st.images_container.max_size;
 
 		st.active_orders_size = 0;
-		st.orders_container = {};
+		st.orders_container = st.orders_container.max_size;
 
 		st.active_thingies_size = 0;
 		st.active_thingies.clear();

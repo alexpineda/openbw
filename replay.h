@@ -116,18 +116,35 @@ struct replay_functions: action_functions {
 	template<typename reader_T>
 	void load_replay(reader_T&& r, bool initial_processing = true, std::vector<uint8_t>* get_map_data = nullptr) {
 		
+
 		uint32_t identifier = r.template get<uint32_t>();
 		if (identifier != MAGIC_CLASSIC && identifier != MAGIC_TR) {
 			error("load_replay: invalid identifier %#x", identifier);
 		}
 
+		// default to 1.16 limits
+		st.images_container = 5000;
+		st.units_container = 1700;
+		st.sprites_container = 2500;
+		st.bullets_container = 100;
+		st.orders_container = 2000;
+
+		// custom block (for now) to specify limits without needing zlib
 		if (identifier == MAGIC_TR) {
-			// uint32_t scr_section = r.template get_raw<uint32_t>();
-			uint32_t scr_section = r.template get<uint32_t>();
-			// uint32_t container_size = r.template get_raw<uint32_t>();
-			uint32_t container_size = r.template get<uint32_t>();
-			st.units_container = container_size;
-			unit_id::unit_generation_size = container_size == 1700 ? 5 : 3;
+			std::array<uint8_t, 0x1c> limits_buffer;
+			r.get_bytes(limits_buffer.data(), limits_buffer.size());
+			
+			data_loading::data_reader_le lmts(limits_buffer.data(), limits_buffer.data() + limits_buffer.size());
+			
+			st.images_container = lmts.get<uint32_t>();
+			st.sprites_container = lmts.get<uint32_t>();
+			lmts.get<uint32_t>(); // thingies
+			st.units_container = lmts.get<uint32_t>();
+			st.bullets_container = lmts.get<uint32_t>();
+			st.orders_container = lmts.get<uint32_t>();
+			lmts.get<uint32_t>(); // fog sprites
+
+			unit_id::unit_generation_size = st.units_container.max_size == 1700 ? 5 : 3;
 		}
 
 		std::array<uint8_t, 633> game_info_buffer;

@@ -59,13 +59,13 @@ namespace bwgame
 			cont.insert(std::next(cont.begin()), v);
 	}
 
-	template <typename T, size_t init_max_size, size_t allocation_granularity>
+	template <typename T, size_t allocation_granularity>
 	struct object_container
 	{
 		a_deque<std::array<T, allocation_granularity>> list;
 		intrusive_list<T, default_link_f> free_list;
 		size_t size = 0;
-		size_t max_size = init_max_size;
+		size_t max_size = 0;
 
 		object_container() {}
 
@@ -74,7 +74,7 @@ namespace bwgame
 			max_size = _max_size;
 		}
 
-		void reset(size_t new_max_size = init_max_size)
+		void reset(size_t new_max_size)
 		{
 			list.clear();
 			free_list.clear();

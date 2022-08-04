@@ -365,7 +365,7 @@ void init() {
 	if (freq == 0) {
 //#ifdef EMSCRIPTEN
 #if 0
-		freq = EM_ASM_INT_V({
+		freq = MAIN_THREAD_EM_ASM_INT({
 			var context;
 			try {
 				context = new AudioContext();

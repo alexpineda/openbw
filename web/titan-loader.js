@@ -187,9 +187,9 @@ function load_replay_file(files, download) {
         throw "read failed with no error!?";
       if (e.target.error) throw "read failed: " + e.target.error;
       var og = new Int8Array(e.target.result);
-      const srep = await sidegrade.parseReplay(og);
-      const chkDowngrader = new sidegrade.ChkDowngrader();
-      const arr = await sidegrade.convertReplay(srep, chkDowngrader);
+      // const srep = await sidegrade.parseReplay(og);
+      // const chkDowngrader = new sidegrade.ChkDowngrader();
+      // const arr = await sidegrade.convertReplay(srep, chkDowngrader);
 
       if (download) {
         downloadBlob(arr, `gol-${files[0].name}`);
@@ -197,8 +197,8 @@ function load_replay_file(files, download) {
       }
 
       try {
-        var buf = openBw.allocate(arr, openBw.ALLOC_NORMAL);
-        start_replay(buf, arr.length);
+        var buf = openBw.allocate(og, openBw.ALLOC_NORMAL);
+        start_replay(buf, og.length);
         openBw._free(buf);
       } catch (e) {
         if (typeof e === "number") {

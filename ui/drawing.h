@@ -1277,7 +1277,7 @@ namespace bwgame
 				error("don't know how to draw image modifier %d", image->modifier);
 		}
 
-		a_vector<const unit_t *> current_selection_sprites_set = a_vector<const unit_t *>(2500);
+		a_vector<const unit_t *> current_selection_sprites_set = a_vector<const unit_t *>(5000);
 		a_vector<const sprite_t *> current_selection_sprites;
 
 		void draw_selection_circle(const sprite_t *sprite, const unit_t *u, uint8_t *data, size_t data_pitch)
