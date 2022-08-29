@@ -728,6 +728,8 @@ extern "C" void *get_buffer(int index)
 		return reinterpret_cast<void *>(m->ui.linked_sprites.data());
 	case 11:
 		return reinterpret_cast<void *>(m->ui.played_sounds.data());
+	case 12:
+		return reinterpret_cast<void *>(m->ui.global_st.iscript.program_data.size());
 	default:
 		return nullptr;
 	}
@@ -760,7 +762,7 @@ extern "C" int counts(int index)
 	case 10:
 		return util_functions(m->ui.st).get_fow_size();
 	case 12:
-		return 0;
+		return m->ui.global_st.iscript.program_data.size();
 	case 13:
 		return 0;
 	case 14:

@@ -14766,7 +14766,10 @@ void update_units() {
 		while (true) {
 			using namespace iscript_opcodes;
 			size_t pc = p - program_data;
-			if (pc == 0) error("iscript: program counter is null");
+			if (pc == 0) {
+			  destroy_image(image);
+			  return false;
+			}
 			int opc = *p++ - 0x808091;
 			int a, b, c;
 			switch (opc) {
