@@ -107,7 +107,7 @@ namespace bwgame
 
 		virtual void on_bullet_destroy(bullet_t *bullet) override
 		{
-			deleted_bullets.push_back(bullet->sprite->index);
+			deleted_bullets.push_back(bullet->index);
 		}
 
 		virtual void on_sprite_destroy(sprite_t *sprite) override
@@ -118,7 +118,7 @@ namespace bwgame
 		// tracks create_thingy_at_image for halo trails
 		virtual void on_sprite_link(sprite_t *parent, sprite_t *sprite) override
 		{
-			if (sprite->sprite_type->id == SpriteTypes::SPRITEID_Halo_Rockets_Trail || sprite->sprite_type->id == SpriteTypes::SPRITEID_Longbolt_Gemini_Missiles_Trail)
+			if (sprite->sprite_type->id == SpriteTypes::SPRITEID_Halo_Rockets_Trail || sprite->sprite_type->id == SpriteTypes::SPRITEID_Longbolt_Gemini_Missiles_Trail || sprite->sprite_type->id == SpriteTypes::SPRITEID_Glave_Wurm_Trail || sprite->sprite_type->id == SpriteTypes::SPRITEID_Yamato_Gun_Trail)
 			{
 				linked_sprites.push_back({(int)parent->index, (int)sprite->index});
 			}
