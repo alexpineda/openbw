@@ -129,6 +129,11 @@ namespace bwgame
 			deleted_units.push_back(get_unit_id(u).raw_value);
 		}
 
+		virtual void on_unit_destroy(unit_t *u) override
+		{
+			deleted_units.push_back(get_unit_id(u).raw_value);
+		}
+
 		fp8 game_speed = fp8::integer(1);
 
 		void generate_player_data()
@@ -270,7 +275,7 @@ namespace bwgame
 			}
 		}
 
-		void reset()
+		void clear_frame()
 		{
 			deleted_images.clear();
 			deleted_sprites.clear();
@@ -278,6 +283,11 @@ namespace bwgame
 			deleted_bullets.clear();
 			linked_sprites.clear();
 			played_sounds.clear();
+		}
+
+		void reset()
+		{
+			clear_frame();
 			player_data.fill({});
 			production_data.fill({});
 			fow.clear();
@@ -293,6 +303,34 @@ namespace bwgame
 			st.global = &global_st;
 			st.game = &game;
 		}
+
+		void create_unit(int id, int owner, int x, int y)
+		{
+			const unit_type_t *unit_type = get_unit_type((UnitTypes)id);
+			trigger_create_unit(unit_type, {x, y}, owner);
+		}
+
+		void kill_unit(int id)
+		{
+			unit_t *u = get_unit(unit_id_32(id));
+			if (u)
+				state_functions::kill_unit(u);
+		}
+
+		void remove_unit(int id)
+		{
+			unit_t *u = get_unit(unit_id_32(id));
+			if (u)
+			{
+				hide_unit(u);
+				state_functions::kill_unit(u);
+			}
+		}
+
+		void next_no_replay() {
+			state_functions::next_frame();
+		}
+	
 	};
 
 }

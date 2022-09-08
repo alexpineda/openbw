@@ -91,12 +91,7 @@ struct main_t
 
 	bool update()
 	{
-		ui.played_sounds.clear();
-		ui.deleted_images.clear();
-		ui.deleted_sprites.clear();
-		ui.deleted_units.clear();
-		ui.deleted_bullets.clear();
-		ui.linked_sprites.clear();
+		ui.clear_frame();
 
 		auto now = clock.now();
 
@@ -817,7 +812,6 @@ extern "C" uint8_t *get_fow_ptr(uint8_t player_visibility, bool instant)
 	return m->ui.fow.data();
 }
 
-bool any_replay_loaded = false;
 
 extern "C" int next_frame()
 {
@@ -829,7 +823,23 @@ extern "C" void load_replay(const uint8_t *data, size_t len)
 {
 	m->reset();
 	m->ui.load_replay_data(data, len);
-	any_replay_loaded = true;
+}
+
+extern "C" void load_map( uint8_t *data, size_t len)
+{
+	m->reset();
+	game_load_functions game_load_funcs(m->ui.st);
+	game_load_funcs.load_map_data(data, len); 
+}
+
+extern "C" void create_unit(int unit_type, int player, int x, int y)
+{
+	m->ui.create_unit(unit_type, player, x, y);
+}
+
+extern "C" void  next_no_replay()
+{
+	m->ui.next_no_replay();
 }
 #endif
 
