@@ -719,8 +719,7 @@ extern "C" void *get_buffer(int index)
 	case 9:
 		m->ui.generate_production_data();
 		return reinterpret_cast<void *>(m->ui.production_data.data());
-	case 10:
-		return reinterpret_cast<void *>(m->ui.linked_sprites.data());
+	case 10: // unused
 	case 11:
 		return reinterpret_cast<void *>(m->ui.played_sounds.data());
 	case 12:
@@ -736,8 +735,7 @@ extern "C" int counts(int index)
 	{
 	case 0: // tiles
 		return m->ui.st.tiles.size();
-	case 1: // linked sprites
-		return m->ui.linked_sprites.size();
+	case 1: // unused
 	case 2: // upgrade count
 		return 0;
 	case 3: // research count

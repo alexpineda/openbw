@@ -57,12 +57,6 @@ namespace bwgame
 		std::vector<research_in_production_t> research_in_production;
 	};
 
-	struct linked_sprite_t
-	{
-		int parent_id;
-		int child_id;
-	};
-
 	struct titan_replay_functions : ui_functions
 	{
 		game_player player;
@@ -71,7 +65,6 @@ namespace bwgame
 		std::vector<int> deleted_sprites;
 		std::vector<int> deleted_units;
 		std::vector<int> deleted_bullets;
-		std::vector<linked_sprite_t> linked_sprites;
 		std::array<player_data_t, 8> player_data;
 		std::array<production_data_t, 8> production_data;
 		std::vector<uint8_t> fow;
@@ -113,15 +106,6 @@ namespace bwgame
 		virtual void on_sprite_destroy(sprite_t *sprite) override
 		{
 			deleted_sprites.push_back(sprite->index);
-		}
-
-		// tracks create_thingy_at_image for halo trails
-		virtual void on_sprite_link(sprite_t *parent, sprite_t *sprite) override
-		{
-			if (sprite->sprite_type->id == SpriteTypes::SPRITEID_Halo_Rockets_Trail || sprite->sprite_type->id == SpriteTypes::SPRITEID_Longbolt_Gemini_Missiles_Trail || sprite->sprite_type->id == SpriteTypes::SPRITEID_Glave_Wurm_Trail || sprite->sprite_type->id == SpriteTypes::SPRITEID_Yamato_Gun_Trail)
-			{
-				linked_sprites.push_back({(int)parent->index, (int)sprite->index});
-			}
 		}
 
 		virtual void on_kill_unit(unit_t *u) override
@@ -281,7 +265,6 @@ namespace bwgame
 			deleted_sprites.clear();
 			deleted_units.clear();
 			deleted_bullets.clear();
-			linked_sprites.clear();
 			played_sounds.clear();
 		}
 
