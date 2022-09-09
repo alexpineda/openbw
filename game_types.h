@@ -552,6 +552,10 @@ namespace bwgame
 		xy position;
 		image_t *main_image;
 		intrusive_list<image_t, default_link_f> images;
+
+		int ext_terrain_y;
+		int ext_flying_y;
+
 	};
 
 	struct thingy_t : link_base
@@ -609,6 +613,11 @@ namespace bwgame
 		unit_t *bullet_owner_unit;
 		unit_t *prev_bounce_unit;
 		size_t hit_near_target_position_index;
+
+		int ext_src_flying_y;
+		int ext_dst_flying_y;
+		int ext_target_distance;
+
 	};
 
 	struct order_target_t

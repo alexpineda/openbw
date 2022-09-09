@@ -187,6 +187,10 @@ struct game_state {
 	regions_t regions;
 
 	a_vector<trigger> triggers;
+
+	a_vector<uint8_t> ext_height_data;
+	int ext_height_map_width;
+	int ext_height_map_height;
 };
 
 struct state_base_copyable {
@@ -5124,6 +5128,9 @@ struct state_functions {
 		u_set_status_flag(u, unit_t::status_flag_can_turn);
 		u_set_status_flag(u, unit_t::status_flag_can_move, !ut_turret(u));
 		u_set_status_flag(u, unit_t::status_flag_flying);
+
+		u->sprite->ext_flying_y = ut_flyer(u) ? 255 : 0;
+
 		u->sprite->elevation_level = 12;
 		reset_movement_state(u);
 		check_unit_collision(u);
@@ -5265,6 +5272,9 @@ struct state_functions {
 					unit_finder_remove(u);
 					if (u_flying(u)) decrement_repulse_field(u);
 					u_unset_status_flag(u, unit_t::status_flag_flying);
+					
+					u->sprite->ext_flying_y = ut_flyer(u) ? 255 : 0;
+
 					u_unset_status_flag(u, unit_t::status_flag_can_turn);
 					u_unset_status_flag(u, unit_t::status_flag_can_move);
 					u_set_status_flag(u, unit_t::status_flag_grounded_building);
@@ -13268,9 +13278,25 @@ void update_units() {
 		size_t old_index = get_sprite_tile_line_index(sprite->position.y);
 		size_t new_index = get_sprite_tile_line_index(new_position.y);
 		sprite->position = new_position;
+		// TODO: skip this if bullet trail and set it in create_thingy_at_image
+		ext_set_sprite_ext_y(sprite);
 		if (old_index != new_index) {
 			st.sprites_on_tile_line[old_index].remove(*sprite);
 			bw_insert_list(st.sprites_on_tile_line[new_index], *sprite);
+		}
+	}
+
+	// titan reactor: 3d y height based on the height map
+	void ext_set_sprite_ext_y(sprite_t* sprite) {
+		if (st.game->ext_height_data.size()) {
+			// scale according to our height map size
+			int x = sprite->position.x * (st.game->ext_height_map_width / st.game->map_width);
+			int y = sprite->position.y * (st.game->ext_height_map_height / st.game->map_height);
+			int index = y * st.game->ext_height_map_width + x;
+			if (index < st.game->ext_height_data.size()) {
+				sprite->ext_terrain_y = st.game->ext_height_data[index];
+			}
+
 		}
 	}
 
@@ -14256,6 +14282,7 @@ void update_units() {
 		if (!is_in_bounds(b->position, map_bounds())) b->remaining_time = 0;
 		xy pos = restrict_pos_to_map_bounds(b->position);
 		move_sprite(b->sprite, pos);
+		ext_lerp_bullet_fly_offsets(b);
 		if (b->position != pos) {
 			b->position = pos;
 			b->exact_position = to_xy_fp8(pos);
@@ -14365,10 +14392,12 @@ void update_units() {
 					});
 				}
 				b->prev_bounce_unit = target;
+				b->ext_src_flying_y = target->sprite->ext_flying_y;
 			}
 			if (new_target) {
 				sprite_run_anim(b->sprite, iscript_anims::SpecialState1);
 				b->bullet_target = new_target;
+				b->ext_dst_flying_y = new_target->sprite->ext_flying_y;
 			} else {
 				bullet_kill(b);
 			}
@@ -14488,6 +14517,9 @@ void update_units() {
 			b->bullet_target = nullptr;
 			target_pos = source_unit->order_target.pos;
 		}
+
+		ext_init_bullet_fly_offsets(b, target_unit, source_unit);
+
 		switch (weapon_type->bullet_type) {
 		case weapon_type_t::bullet_type_fly:
 		case weapon_type_t::bullet_type_follow_target:
@@ -14537,6 +14569,39 @@ void update_units() {
 		}
 		b->bullet_target_pos = target_pos;
 		return true;
+	}
+
+	void ext_init_bullet_fly_offsets(bullet_t* b, unit_t* target_unit, unit_t* source_unit) {
+		
+		b->ext_src_flying_y = source_unit->sprite->ext_flying_y;
+		b->sprite->ext_flying_y = b->ext_src_flying_y;
+
+		if (target_unit) {
+
+			b->ext_dst_flying_y = target_unit->sprite->ext_flying_y;
+			b->ext_target_distance = xy_length(target_unit->position - source_unit->position);
+
+			switch (b->weapon_type->bullet_type) {
+				case weapon_type_t::bullet_type_appear_at_target_unit:
+				case weapon_type_t::bullet_type_appear_at_target_pos:
+				case weapon_type_t::bullet_type_persist_at_target_pos:
+					b->sprite->ext_flying_y = b->ext_dst_flying_y;
+			}
+			
+		} else {
+			b->ext_dst_flying_y = source_unit->sprite->ext_flying_y;
+			b->ext_target_distance = 0;
+		}
+
+	}
+
+	void ext_lerp_bullet_fly_offsets(bullet_t* b) {
+		if (b->ext_target_distance == 0) return;
+		
+		// lerp between bullet ext_src_flying_y and ext_dst_flying_y depending on distance from target
+		xy &target_pos = (b->bullet_target) ? b->bullet_target->position : b->bullet_target_pos;
+		double t = static_cast<float>(xy_length(b->position - target_pos)) / b->ext_target_distance;
+		b->sprite->ext_flying_y = b->ext_dst_flying_y + (b->ext_src_flying_y - b->ext_dst_flying_y) * t;
 	}
 
 	bullet_t* create_bullet(const weapon_type_t* weapon_type, unit_t* source_unit, xy pos, int owner, direction_t heading) {
@@ -14617,6 +14682,7 @@ void update_units() {
 		t->sprite->elevation_level = elevation_level;
 		if (!us_hidden(t)) set_sprite_visibility(t->sprite, tile_visibility(t->sprite->position));
 		on_sprite_link(parent_image->sprite, t->sprite);
+		t->sprite->ext_flying_y = parent_image->sprite->ext_flying_y;
 		return t;
 	}
 
@@ -15375,6 +15441,8 @@ void update_units() {
 			sprite->elevation_level = 4;
 			sprite->selection_timer = 0;
 			sprite->images.clear();
+			sprite->ext_flying_y = 0;
+			ext_set_sprite_ext_y(sprite);
 			if (!sprite_type->visible) {
 				sprite->flags |= sprite_t::flag_hidden;
 				set_sprite_visibility(sprite, 0);
@@ -15938,6 +16006,9 @@ void update_units() {
 		u->sprite->elevation_level = unit_type->elevation_level;
 		u_set_status_flag(u, unit_t::status_flag_grounded_building, ut_building(u));
 		u_set_status_flag(u, unit_t::status_flag_flying, ut_flyer(u));
+
+		u->sprite->ext_flying_y = ut_flyer(u) ? 255 : 0;
+
 		u_set_status_flag(u, unit_t::status_flag_can_turn, ut_can_turn(u));
 		u_set_status_flag(u, unit_t::status_flag_can_move, ut_can_move(u));
 		u_set_status_flag(u, unit_t::status_flag_ground_unit, !ut_flyer(u));

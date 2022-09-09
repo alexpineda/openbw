@@ -812,7 +812,6 @@ extern "C" uint8_t *get_fow_ptr(uint8_t player_visibility, bool instant)
 	return m->ui.fow.data();
 }
 
-
 extern "C" int next_frame()
 {
 	m->update();
@@ -823,13 +822,34 @@ extern "C" void load_replay(const uint8_t *data, size_t len)
 {
 	m->reset();
 	m->ui.load_replay_data(data, len);
+	log("ext load replay: %d\n", len);
 }
 
-extern "C" void load_map( uint8_t *data, size_t len)
+extern "C" void load_map(uint8_t *data, size_t len)
 {
 	m->reset();
 	game_load_functions game_load_funcs(m->ui.st);
-	game_load_funcs.load_map_data(data, len); 
+	game_load_funcs.load_map_data(data, len);
+}
+
+void upload_height_map(uint8_t *data, size_t len, int width, int height)
+{
+	m->ui.st.game->ext_height_data.clear();
+	m->ui.st.game->ext_height_map_width = width;
+	m->ui.st.game->ext_height_map_height = height;
+	for (int i = 0; i < len; i++)
+	{
+		m->ui.st.game->ext_height_data.push_back(data[i]);
+	}
+	log("ext upload_height_map: %d %d %d %d\n", width, height, len, m->ui.st.game->ext_height_data.size());
+}
+
+extern "C" void load_replay_with_height_map(const uint8_t *data, size_t len, uint8_t *height_data, size_t height_len, int width, int height)
+{
+	m->reset();
+	upload_height_map(height_data, height_len, width, height);
+	m->ui.load_replay_data(data, len);
+	log("ext load replay: %d\n", len);
 }
 
 extern "C" void create_unit(int unit_type, int player, int x, int y)
@@ -837,7 +857,7 @@ extern "C" void create_unit(int unit_type, int player, int x, int y)
 	m->ui.create_unit(unit_type, player, x, y);
 }
 
-extern "C" void  next_no_replay()
+extern "C" void next_no_replay()
 {
 	m->ui.next_no_replay();
 }
@@ -847,7 +867,7 @@ int main()
 {
 	using namespace bwgame;
 
-	log("openbw-build: 31\n");
+	log("openbw-build: 32\n");
 
 	std::chrono::high_resolution_clock clock;
 	auto start = clock.now();
