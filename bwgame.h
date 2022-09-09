@@ -13289,8 +13289,8 @@ void update_units() {
 	void ext_set_sprite_ext_y(sprite_t* sprite) {
 		if (st.game->ext_height_data.size()) {
 			// scale according to our height map size
-			int x = sprite->position.x * (st.game->ext_height_map_width / st.game->map_width);
-			int y = sprite->position.y * (st.game->ext_height_map_height / st.game->map_height);
+			int x = sprite->position.x * (static_cast<float>(st.game->ext_height_map_width) / st.game->map_width);
+			int y = sprite->position.y * (static_cast<float>(st.game->ext_height_map_height) / st.game->map_height);
 			int index = y * st.game->ext_height_map_width + x;
 			if (index < st.game->ext_height_data.size()) {
 				sprite->ext_terrain_y = st.game->ext_height_data[index];
