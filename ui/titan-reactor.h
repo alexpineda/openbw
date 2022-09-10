@@ -267,7 +267,6 @@ namespace bwgame
 			deleted_units.clear();
 			deleted_bullets.clear();
 			played_sounds.clear();
-
 		}
 
 		void reset()
@@ -288,7 +287,16 @@ namespace bwgame
 			replay_frame = 0;
 			st.global = &global_st;
 			st.game = &game;
-			
+
+			// default to 1.16 limits
+			st.images_container = 5000;
+			st.units_container = 1700;
+			st.sprites_container = 2500;
+			st.bullets_container = 100;
+			st.orders_container = 2000;
+
+			unit_id::unit_generation_size = st.units_container.max_size == 1700 ? 5 : 3;
+
 		}
 
 		void next_no_replay()

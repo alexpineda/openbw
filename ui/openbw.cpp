@@ -490,8 +490,6 @@ extern "C" void replay_set_value(int index, double value)
 	}
 }
 
-#define EMSCRIPTEN 1
-
 #ifdef EMSCRIPTEN
 
 #include <emscripten/bind.h>
@@ -651,9 +649,11 @@ struct util_functions : state_functions
 		return o;
 	}
 
-	bool kill_unit(uint16_t id)
+	bool kill_unit(int id)
 	{
-		unit_t *u = get_unit(unit_id_t<uint16_t>(id));
+		log("killing unit %d\n", id);
+		unit_t *u = get_unit(unit_id(id));
+
 		if (u)
 		{
 			state_functions::kill_unit(u);
@@ -662,9 +662,10 @@ struct util_functions : state_functions
 		return false;
 	}
 
-	bool remove_unit(uint16_t id)
+	bool remove_unit(int id)
 	{
-		unit_t *u = get_unit(unit_id_t<uint16_t>(id));
+		unit_t *u = get_unit(unit_id(id));
+
 		if (u)
 		{
 			hide_unit(u);
@@ -856,7 +857,8 @@ extern "C" void *get_buffer(int index)
 	case 9:
 		m->ui.generate_production_data();
 		return reinterpret_cast<void *>(m->ui.production_data.data());
-	case 10: // unused
+	case 10:
+		return reinterpret_cast<void *>(m->ui.st.players.data());
 	case 11:
 		return reinterpret_cast<void *>(m->ui.played_sounds.data());
 	case 12:
@@ -872,21 +874,16 @@ extern "C" int counts(int index)
 	{
 	case 0: // tiles
 		return m->ui.st.tiles.size();
-	case 1: // unused
-	case 2: // upgrade count
+	case 1:
+	case 2:
+	case 3:
+	case 4:
+	case 5:
 		return 0;
-	case 3: // research count
-		return 0;
-	case 4: // sprite count
-		return 0;
-	case 5: // image count
-		return 0;
-	case 6: // sound count
+	case 6:
 		return (int)m->ui.played_sounds.size();
-	case 7: // building queue count
-		return 0;
+	case 7:
 	case 8:
-		return 0;
 	case 9:
 		return 0;
 	case 10:
@@ -965,19 +962,67 @@ extern "C" void load_map(uint8_t *data, size_t len)
 {
 	m->reset();
 	game_load_functions game_load_funcs(m->ui.st);
-	game_load_funcs.load_map_data(data, len);
+	game_load_funcs.load_map_data(data, len, [&]()
+								  {
+									  bwgame::static_vector<size_t, 12> available_slots;
+									  for (auto &v : m->ui.st.players)
+									  {
+										  if (v.controller == bwgame::player_t::controller_open || v.controller == bwgame::player_t::controller_computer)
+										  {
+											  size_t index = (size_t)(&v - m->ui.st.players.data());
+											  if (index < 8)
+												  available_slots.push_back(index);
+											  v.controller = bwgame::player_t::controller_closed;
+										  }
+									  }
+									  if (available_slots.size() < 2)
+										  error("not enough available player slots (need 2)");
+
+									  int local_player_id = available_slots.at(0);
+									  available_slots.erase(available_slots.begin() + local_player_id);
+									  int enemy_player_id = available_slots.at(0);
+
+									  auto &local_player = m->ui.st.players.at(local_player_id);
+									  auto &enemy_player = m->ui.st.players.at(enemy_player_id);
+									  local_player.controller = bwgame::player_t::controller_occupied;
+									  enemy_player.controller = bwgame::player_t::controller_occupied;
+
+									  game_load_funcs.setup_info.starting_units = 1;
+
+
+									//   for (auto& v : st.players) {
+									//   	if (v.controller == bwgame::player_t::controller_occupied) {
+									//   		if ((int)v.race > 2) v.race = (bwgame::race_t)rng(3);
+									//   	}
+									//   }
+
+									  // st.lcg_rand_state = rng<decltype(st.lcg_rand_state)>(); });
+									  if (m->ui.st.players.at(local_player_id).controller != bwgame::player_t::controller_occupied)
+										  error("slot %d is not occupied (not a 2 player map?)", local_player_id);
+									  if (m->ui.st.players.at(enemy_player_id).controller != bwgame::player_t::controller_occupied)
+										  error("slot %d is not occupied (not a 2 player map?)", enemy_player_id); });
 }
 
-void upload_height_map(uint8_t *data, size_t len, int width, int height)
+extern "C" void upload_height_map(uint8_t *data, size_t len, int width, int height)
 {
+
 	m->ui.st.game->ext_height_data.clear();
 	m->ui.st.game->ext_height_map_width = width;
 	m->ui.st.game->ext_height_map_height = height;
+
 	for (int i = 0; i < len; i++)
 	{
 		m->ui.st.game->ext_height_data.push_back(data[i]);
 	}
-	log("ext upload_height_map: %d %d %d %d\n", width, height, len, m->ui.st.game->ext_height_data.size());
+
+	// reset sprite heights
+	for (auto &t : m->ui.st.sprites_on_tile_line)
+	{
+		for (auto &s : t)
+		{
+			m->ui.ext_set_sprite_ext_y(&s);
+		}
+	}
 }
 
 extern "C" void load_replay_with_height_map(const uint8_t *data, size_t len, uint8_t *height_data, size_t height_len, int width, int height)
@@ -1011,7 +1056,7 @@ int main()
 {
 	using namespace bwgame;
 
-	log("openbw-build: 32\n");
+	log("openbw-build: 33\n");
 
 	std::chrono::high_resolution_clock clock;
 	auto start = clock.now();

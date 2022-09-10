@@ -144,8 +144,10 @@ struct replay_functions: action_functions {
 			st.orders_container = lmts.get<uint32_t>();
 			lmts.get<uint32_t>(); // fog sprites
 
-			unit_id::unit_generation_size = st.units_container.max_size == 1700 ? 5 : 3;
 		}
+
+		unit_id::unit_generation_size = st.units_container.max_size == 1700 ? 5 : 3;
+
 
 		std::array<uint8_t, 633> game_info_buffer;
 		r.get_bytes(game_info_buffer.data(), game_info_buffer.size());
