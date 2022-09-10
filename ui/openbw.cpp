@@ -91,7 +91,6 @@ struct main_t
 
 	bool update()
 	{
-		ui.clear_frame();
 
 		auto now = clock.now();
 
@@ -491,6 +490,8 @@ extern "C" void replay_set_value(int index, double value)
 	}
 }
 
+#define EMSCRIPTEN 1
+
 #ifdef EMSCRIPTEN
 
 #include <emscripten/bind.h>
@@ -650,6 +651,139 @@ struct util_functions : state_functions
 		return o;
 	}
 
+	bool kill_unit(uint16_t id)
+	{
+		unit_t *u = get_unit(unit_id_t<uint16_t>(id));
+		if (u)
+		{
+			state_functions::kill_unit(u);
+			return true;
+		}
+		return false;
+	}
+
+	bool remove_unit(uint16_t id)
+	{
+		unit_t *u = get_unit(unit_id_t<uint16_t>(id));
+		if (u)
+		{
+			hide_unit(u);
+			state_functions::kill_unit(u);
+			return true;
+		}
+		return false;
+	}
+
+	enum Commands
+	{
+		Attack_Move = 0,
+		Attack_Unit = 1,
+		Move = 2,
+		Build = 3,
+		Train = 4,
+		Right_Click_Unit = 5,
+	};
+
+	void select_unit(uint16_t unit_id)
+	{
+		unit_t *u = get_unit(unit_id_t<uint16_t>(unit_id));
+		if (!u)
+			return;
+
+		m->ui.action_select(u->owner, u);
+	}
+
+	// TODO: select units, unselect, shift select
+
+	bool issue_command(uint16_t unit_id, int command, uint16_t target_id, int x, int y, int extra)
+	{
+		unit_t *u = get_unit(unit_id_t<uint16_t>(unit_id));
+		if (!u)
+			return false;
+
+		bwgame::unit_t *target = nullptr;
+		if (target_id > 0)
+		{
+			target = get_unit(unit_id_t<uint16_t>(target_id));
+			if (!target)
+				return false;
+		}
+
+		m->ui.action_select(u->owner, u);
+		if (command == Attack_Move)
+		{
+			if (u && u->unit_type->id == bwgame::UnitTypes::Zerg_Infested_Terran)
+			{
+				return m->ui.action_order(u->owner, m->ui.get_order_type(bwgame::Orders::AttackDefault), {x, y}, target, nullptr, false);
+			}
+			else
+			{
+				return m->ui.action_order(u->owner, m->ui.get_order_type(bwgame::Orders::AttackMove), {x, y}, target, nullptr, false);
+			}
+		}
+		else if (command == Attack_Unit)
+		{
+			return m->ui.action_order(u->owner, m->ui.get_order_type(bwgame::Orders::AttackUnit), {x, y}, target, nullptr, false);
+		}
+		else if (command == Move)
+		{
+			return m->ui.action_default_order(u->owner, {x, y}, nullptr, nullptr, false);
+		}
+		else if (command == Build)
+		{
+			auto *ut = m->ui.get_unit_type((bwgame::UnitTypes)extra);
+			bwgame::Orders o{};
+			if (m->ui.unit_is_nydus(u) && m->ui.unit_is_nydus(ut))
+			{
+				o = bwgame::Orders::BuildNydusExit;
+			}
+			else if (m->ui.ut_addon(ut))
+			{
+				o = bwgame::Orders::PlaceAddon;
+			}
+			else
+			{
+				auto r = m->ui.unit_race(ut);
+				if (r == bwgame::race_t::zerg)
+					o = bwgame::Orders::DroneStartBuild;
+				else if (r == bwgame::race_t::terran)
+					o = bwgame::Orders::PlaceBuilding;
+				else if (r == bwgame::race_t::protoss)
+					o = bwgame::Orders::PlaceProtossBuilding;
+			}
+			return m->ui.action_build(u->owner, m->ui.get_order_type(o), ut, {(unsigned)x, (unsigned)y});
+		}
+		else if (command == Train)
+		{
+			auto *ut = m->ui.get_unit_type((bwgame::UnitTypes)extra);
+			switch (u->unit_type->id)
+			{
+			case bwgame::UnitTypes::Zerg_Larva:
+			case bwgame::UnitTypes::Zerg_Mutalisk:
+			case bwgame::UnitTypes::Zerg_Hydralisk:
+				return m->ui.action_morph(u->owner, ut);
+			case bwgame::UnitTypes::Zerg_Hatchery:
+			case bwgame::UnitTypes::Zerg_Lair:
+			case bwgame::UnitTypes::Zerg_Spire:
+			case bwgame::UnitTypes::Zerg_Creep_Colony:
+				return m->ui.action_morph_building(u->owner, ut);
+			case bwgame::UnitTypes::Protoss_Carrier:
+			case bwgame::UnitTypes::Hero_Gantrithor:
+			case bwgame::UnitTypes::Protoss_Reaver:
+			case bwgame::UnitTypes::Hero_Warbringer:
+				return m->ui.action_train_fighter(u->owner);
+			default:
+				return m->ui.action_train(u->owner, ut);
+			}
+		}
+		else if (command == Right_Click_Unit)
+		{
+			return m->ui.action_default_order(u->owner, {x, y}, target, nullptr, false);
+		}
+		error("issueCommand: unknown command type %d\n", (int)command);
+		return false;
+	}
+
 	int get_fow_size()
 	{
 		if (m->ui.fow.size() != m->ui.st.tiles.size())
@@ -684,7 +818,10 @@ EMSCRIPTEN_BINDINGS(openbw)
 	function("getExceptionMessage", &getExceptionMessage);
 
 	class_<util_functions>("util_functions")
-		.function("dump_unit", &util_functions::dump_unit, allow_raw_pointers());
+		.function("dump_unit", &util_functions::dump_unit, allow_raw_pointers())
+		.function("kill_unit", &util_functions::kill_unit)
+		.function("remove_unit", &util_functions::remove_unit)
+		.function("issue_command", &util_functions::issue_command);
 
 	function("get_util_funcs", &get_util_funcs);
 }
@@ -812,6 +949,7 @@ extern "C" uint8_t *get_fow_ptr(uint8_t player_visibility, bool instant)
 
 extern "C" int next_frame()
 {
+	m->ui.clear_frame();
 	m->update();
 	return m->ui.st.current_frame;
 }
@@ -850,14 +988,22 @@ extern "C" void load_replay_with_height_map(const uint8_t *data, size_t len, uin
 	log("ext load replay: %d\n", len);
 }
 
-extern "C" void create_unit(int unit_type, int player, int x, int y)
+extern "C" int next_no_replay()
 {
-	m->ui.create_unit(unit_type, player, x, y);
+	m->ui.clear_frame();
+	m->ui.next_no_replay();
+	return m->ui.st.current_frame;
 }
 
-extern "C" void next_no_replay()
+extern "C" void *create_unit(int unit_type_id, int player, int x, int y)
 {
-	m->ui.next_no_replay();
+	const unit_type_t *unit_type = m->ui.get_unit_type((UnitTypes)unit_type_id);
+	unit_t *u = m->ui.trigger_create_unit(unit_type, {x, y}, player);
+	if (u)
+	{
+		return reinterpret_cast<void *>(u);
+	}
+	return nullptr;
 }
 #endif
 
