@@ -846,7 +846,7 @@ extern "C" void *get_buffer(int index)
 	case 4:
 		return reinterpret_cast<void *>(m->ui.deleted_sprites.data());
 	case 5:
-		return reinterpret_cast<void *>(m->ui.deleted_units.data());
+		return reinterpret_cast<void *>(m->ui.destroyed_units.data());
 	case 6:
 		return reinterpret_cast<void *>(&m->ui.st.active_bullets);
 	case 7:
@@ -863,6 +863,8 @@ extern "C" void *get_buffer(int index)
 		return reinterpret_cast<void *>(m->ui.played_sounds.data());
 	case 12:
 		return reinterpret_cast<void *>(m->ui.global_st.iscript.program_data.size());
+	case 13:
+		return reinterpret_cast<void *>(m->ui.killed_units.data());
 	default:
 		return nullptr;
 	}
@@ -900,9 +902,11 @@ extern "C" int counts(int index)
 	case 16:
 		return m->ui.deleted_sprites.size();
 	case 17:
-		return m->ui.deleted_units.size();
+		return m->ui.destroyed_units.size();
 	case 18: // deleted bullets
 		return m->ui.deleted_bullets.size();
+	case 19:
+		return m->ui.killed_units.size();
 	default:
 		return 0;
 	}

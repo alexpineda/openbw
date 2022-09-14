@@ -63,7 +63,8 @@ namespace bwgame
 		std::vector<played_sound_t> played_sounds;
 		std::vector<int> deleted_images;
 		std::vector<int> deleted_sprites;
-		std::vector<int> deleted_units;
+		std::vector<int> killed_units;
+		std::vector<int> destroyed_units;
 		std::vector<int> deleted_bullets;
 		std::array<player_data_t, 8> player_data;
 		std::array<production_data_t, 8> production_data;
@@ -110,12 +111,12 @@ namespace bwgame
 
 		virtual void on_kill_unit(unit_t *u) override
 		{
-			deleted_units.push_back(get_unit_id(u).raw_value);
+			killed_units.push_back(get_unit_id(u).raw_value);
 		}
 
 		virtual void on_unit_destroy(unit_t *u) override
 		{
-			deleted_units.push_back(get_unit_id(u).raw_value);
+			destroyed_units.push_back(get_unit_id(u).raw_value);
 		}
 
 		fp8 game_speed = fp8::integer(1);
@@ -264,9 +265,11 @@ namespace bwgame
 
 			deleted_images.clear();
 			deleted_sprites.clear();
-			deleted_units.clear();
+			destroyed_units.clear();
+			killed_units.clear();
 			deleted_bullets.clear();
 			played_sounds.clear();
+			
 		}
 
 		void reset()
