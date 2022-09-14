@@ -875,6 +875,7 @@ extern "C" int counts(int index)
 	case 0: // tiles
 		return m->ui.st.tiles.size();
 	case 1:
+		return m->ui.st.last_error;
 	case 2:
 	case 3:
 	case 4:
@@ -958,54 +959,22 @@ extern "C" void load_replay(const uint8_t *data, size_t len)
 	log("ext load replay: %d\n", len);
 }
 
-extern "C" void load_map(uint8_t *data, size_t len)
+extern "C" void load_map(uint8_t *data, size_t len, int starting_units = 0)
 {
 	m->reset();
 	game_load_functions game_load_funcs(m->ui.st);
 	game_load_funcs.load_map_data(data, len, [&]()
 								  {
-									  bwgame::static_vector<size_t, 12> available_slots;
-									  for (auto &v : m->ui.st.players)
+									  for (size_t i = 0; i != 12; ++i)
 									  {
-										  if (v.controller == bwgame::player_t::controller_open || v.controller == bwgame::player_t::controller_computer)
-										  {
-											  size_t index = (size_t)(&v - m->ui.st.players.data());
-											  if (index < 8)
-												  available_slots.push_back(index);
-											  v.controller = bwgame::player_t::controller_closed;
-										  }
+										  m->ui.st.players[i].controller = player_t::controller_occupied;
 									  }
-									  if (available_slots.size() < 2)
-										  error("not enough available player slots (need 2)");
 
-									  int local_player_id = available_slots.at(0);
-									  available_slots.erase(available_slots.begin() + local_player_id);
-									  int enemy_player_id = available_slots.at(0);
-
-									  auto &local_player = m->ui.st.players.at(local_player_id);
-									  auto &enemy_player = m->ui.st.players.at(enemy_player_id);
-									  local_player.controller = bwgame::player_t::controller_occupied;
-									  enemy_player.controller = bwgame::player_t::controller_occupied;
-
-									  game_load_funcs.setup_info.starting_units = 1;
-
-
-									//   for (auto& v : st.players) {
-									//   	if (v.controller == bwgame::player_t::controller_occupied) {
-									//   		if ((int)v.race > 2) v.race = (bwgame::race_t)rng(3);
-									//   	}
-									//   }
-
-									  // st.lcg_rand_state = rng<decltype(st.lcg_rand_state)>(); });
-									  if (m->ui.st.players.at(local_player_id).controller != bwgame::player_t::controller_occupied)
-										  error("slot %d is not occupied (not a 2 player map?)", local_player_id);
-									  if (m->ui.st.players.at(enemy_player_id).controller != bwgame::player_t::controller_occupied)
-										  error("slot %d is not occupied (not a 2 player map?)", enemy_player_id); });
+									  game_load_funcs.setup_info.starting_units = starting_units; });
 }
 
 extern "C" void upload_height_map(uint8_t *data, size_t len, int width, int height)
 {
-
 	m->ui.st.game->ext_height_data.clear();
 	m->ui.st.game->ext_height_map_width = width;
 	m->ui.st.game->ext_height_map_height = height;
