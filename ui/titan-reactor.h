@@ -69,9 +69,19 @@ namespace bwgame
 		std::array<player_data_t, 8> player_data;
 		std::array<production_data_t, 8> production_data;
 		std::vector<uint8_t> fow;
+		std::vector<uint8_t> creep;
+		std::vector<uint8_t> creep_edges;
+		uint8_t player_visibility;
 
 		titan_replay_functions(game_player player) : ui_functions(std::move(player))
 		{
+		}
+
+		void init_session()
+		{
+			creep.resize(game_st.map_width * game_st.map_height);
+			creep_edges.resize(game_st.map_width * game_st.map_height);
+			fow.resize(game_st.map_width * game_st.map_height);
 		}
 
 		virtual void play_sound(int id, xy position, const unit_t *source_unit, bool add_race_index) override
@@ -269,7 +279,6 @@ namespace bwgame
 			killed_units.clear();
 			deleted_bullets.clear();
 			played_sounds.clear();
-			
 		}
 
 		void reset()
@@ -279,6 +288,8 @@ namespace bwgame
 			player_data.fill({});
 			production_data.fill({});
 			fow.clear();
+			creep.clear();
+			creep_edges.clear();
 
 			apm = {};
 			auto &game = *st.game;
@@ -299,12 +310,105 @@ namespace bwgame
 			st.orders_container = 2000;
 
 			unit_id::unit_generation_size = st.units_container.max_size == 1700 ? 5 : 3;
-
 		}
 
 		void next_no_replay()
 		{
 			state_functions::next_frame();
+		}
+
+		//	extracted from drawing.h -> draw_tiles
+		void generate_creep()
+		{
+			if (st.creep_life.recede_timer > 0) {
+				return;
+			}
+
+			xy dirs[9] = {{1, 1}, {0, 1}, {-1, 1}, {1, 0}, {-1, 0}, {1, -1}, {0, -1}, {-1, -1}, {0, 0}};
+
+			for (int tile_y = 0; tile_y < game_st.map_height; ++tile_y)
+			{
+				for (int tile_x = 0; tile_x < game_st.map_width; ++tile_x)
+				{
+					size_t tile_index = tile_y * game_st.map_tile_width + tile_x;
+					auto *megatile_index = &st.tiles_mega_tile_index[tile_index];
+					auto *tile = &st.tiles[tile_index];
+
+					creep[tile_index] = 0;
+					creep_edges[tile_index] = 0;
+
+					if (tile->flags & tile_t::flag_has_creep)
+					{
+						creep[tile_index] = game_st.cv5.at(1).mega_tile_index[creep_random_tile_indices[tile_x + tile_y * game_st.map_tile_width]];
+					}
+
+					if (~tile->flags & tile_t::flag_has_creep)
+					{
+						size_t creep_index = 0;
+						for (size_t i = 0; i != 9; ++i)
+						{
+							int add_x = dirs[i].x;
+							int add_y = dirs[i].y;
+							if (tile_x + add_x >= game_st.map_tile_width)
+								continue;
+							if (tile_y + add_y >= game_st.map_tile_height)
+								continue;
+							if (st.tiles[tile_x + add_x + (tile_y + add_y) * game_st.map_tile_width].flags & tile_t::flag_has_creep)
+								creep_index |= 1 << i;
+						}
+						size_t creep_frame = img.creep_edge_frame_index[creep_index];
+
+						if (creep_frame)
+						{
+
+							creep_edges[tile_index] = creep_frame;
+						}
+					}
+				}
+			}
+		}
+
+		void generate_fow(bool instant)
+		{
+			int i = 0;
+			for (auto &tile : st.tiles)
+			{
+				int v = 15;
+
+				if (~tile.explored & player_visibility)
+				{
+					v = 55;
+				}
+				if (~tile.visible & player_visibility)
+				{
+					v = 255;
+				}
+
+				if (instant)
+				{
+					fow[i] = v;
+				}
+				else
+				{
+					if (v > fow[i])
+					{
+						fow[i] = std::min(v, fow[i] + 10);
+					}
+					else if (v < fow[i])
+					{
+						fow[i] = std::max(v, fow[i] - 5);
+					}
+				}
+
+				i++;
+			}
+		};
+
+		//TODO: optimize when this is called as this is slow
+		void generate_frame() 
+		{
+			// generate_creep();
+			generate_fow(false);
 		}
 	};
 

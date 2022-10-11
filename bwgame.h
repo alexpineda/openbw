@@ -17327,7 +17327,7 @@ void update_units() {
 			else set_unit_order(u, u->unit_type->human_ai_idle);
 		}
 		if (ut_flag(u, (unit_type_t::flags_t)0x800)) {
-			error("fixme unknown flag %d", u->unit_type->id);
+			error("fixme unknown flag %d", (int)u->unit_type->id);
 		}
 		u->air_strength = get_unit_strength(u, false);
 		u->ground_strength = get_unit_strength(u, true);

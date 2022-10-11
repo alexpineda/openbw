@@ -2192,7 +2192,6 @@ namespace bwgame
 
 			if (now - last_fps >= std::chrono::seconds(1))
 			{
-				//ui::log("draw fps: %g\n", fps_counter / std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1, 1>>>(now - last_fps).count());
 				last_fps = now;
 				fps_counter = 0;
 			}

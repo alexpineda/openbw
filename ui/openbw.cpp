@@ -83,6 +83,11 @@ struct main_t
 	unit_t *screen_show_unit = NULL;
 	int screen_show_unit_cooldown = 0;
 
+	void init()
+	{
+		ui.init();
+	}
+
 	void reset()
 	{
 		saved_states.clear();
@@ -865,6 +870,12 @@ extern "C" void *get_buffer(int index)
 		return reinterpret_cast<void *>(m->ui.global_st.iscript.program_data.size());
 	case 13:
 		return reinterpret_cast<void *>(m->ui.killed_units.data());
+	case 14:
+		return reinterpret_cast<void *>(m->ui.creep.data());
+	case 15:
+		return reinterpret_cast<void *>(m->ui.creep_edges.data());
+	case 16: 
+		return reinterpret_cast<void *>(m->ui.fow.data());
 	default:
 		return nullptr;
 	}
@@ -879,7 +890,9 @@ extern "C" int counts(int index)
 	case 1:
 		return m->ui.st.last_error;
 	case 2:
+		return m->ui.creep.size();
 	case 3:
+		return m->ui.creep_edges.size();
 	case 4:
 	case 5:
 		return 0;
@@ -912,41 +925,9 @@ extern "C" int counts(int index)
 	}
 }
 
-extern "C" uint8_t *get_fow_ptr(uint8_t player_visibility, bool instant)
+extern "C" void set_player_visibility(uint8_t player_visibility)
 {
-	int i = 0;
-	for (auto &tile : m->ui.st.tiles)
-	{
-		int v = 15;
-
-		if (~tile.explored & player_visibility)
-		{
-			v = 55;
-		}
-		if (~tile.visible & player_visibility)
-		{
-			v = 255;
-		}
-
-		if (instant)
-		{
-			m->ui.fow[i] = v;
-		}
-		else
-		{
-			if (v > m->ui.fow[i])
-			{
-				m->ui.fow[i] = std::min(v, m->ui.fow[i] + 10);
-			}
-			else if (v < m->ui.fow[i])
-			{
-				m->ui.fow[i] = std::max(v, m->ui.fow[i] - 5);
-			}
-		}
-
-		i++;
-	}
-	return m->ui.fow.data();
+	m->ui.player_visibility = player_visibility;
 }
 
 extern "C" int next_frame()
@@ -960,6 +941,8 @@ extern "C" void load_replay(const uint8_t *data, size_t len)
 {
 	m->reset();
 	m->ui.load_replay_data(data, len);
+	m->ui.init_session();
+
 	log("ext load replay: %d\n", len);
 }
 
@@ -975,6 +958,7 @@ extern "C" void load_map(uint8_t *data, size_t len, int starting_units = 0)
 									  }
 
 									  game_load_funcs.setup_info.starting_units = starting_units; });
+	m->ui.init_session();
 }
 
 extern "C" void upload_height_map(uint8_t *data, size_t len, int width, int height)
@@ -1013,6 +997,11 @@ extern "C" int next_no_replay()
 	return m->ui.st.current_frame;
 }
 
+extern "C" void generate_frame()
+{
+	m->ui.generate_frame();
+}
+
 extern "C" void *create_unit(int unit_type_id, int player, int x, int y)
 {
 	const unit_type_t *unit_type = m->ui.get_unit_type((UnitTypes)unit_type_id);
@@ -1029,7 +1018,7 @@ int main()
 {
 	using namespace bwgame;
 
-	log("openbw-build: 33\n");
+	log("openbw-build: 34\n");
 
 	std::chrono::high_resolution_clock clock;
 	auto start = clock.now();
@@ -1048,6 +1037,15 @@ int main()
 	main_t m(std::move(player));
 
 	auto &ui = m.ui;
+
+	m.ui.load_all_image_data(load_data_file);
+
+	ui.load_data_file = [&](a_vector<uint8_t> &data, a_string filename)
+	{
+		load_data_file(data, std::move(filename));
+	};
+
+	m.init();
 
 #ifndef EMSCRIPTEN
 	ui.load_replay_file("D:\\last_replay.rep");
@@ -1070,15 +1068,7 @@ int main()
 #endif // TITAN_WRITEGIF
 
 #ifndef TITAN_HEADLESS
-
-	m.ui.load_all_image_data(load_data_file);
-
-	ui.load_data_file = [&](a_vector<uint8_t> &data, a_string filename)
-	{
-		load_data_file(data, std::move(filename));
-	};
-
-	ui.init();
+	ui.set_image_data();
 
 	if (ui.create_window)
 	{
@@ -1090,7 +1080,6 @@ int main()
 
 	ui.screen_pos = {(int)ui.game_st.map_width / 2 - (int)screen_width / 2, (int)ui.game_st.map_height / 2 - (int)screen_height / 2};
 
-	ui.set_image_data();
 #endif
 
 	log("loaded in %dms\n", std::chrono::duration_cast<std::chrono::milliseconds>(clock.now() - start).count());
