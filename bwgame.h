@@ -12517,12 +12517,27 @@ struct state_functions {
 			heading = direction_from_index(16 * 2 * index);
 		}
 		xy offset = get_image_lo_offset(u->connected_unit->sprite->main_image, 0, index);
+		
+		#ifdef EMSCRIPTEN
+		/*
+		 * We need the image offset to be relative to the sprite in order to properly show it
+		 * in our shaders.
+		*/
+		auto* t = create_thingy(sprite, u->sprite->position, 0);
+		#else
 		auto* t = create_thingy(sprite, u->sprite->position + offset, 0);
+		#endif 
+
 		if (t) {
 			t->sprite->elevation_level = u->sprite->elevation_level + 1;
+			t->sprite->ext_flying_y = u->sprite->ext_flying_y;
+			t->sprite->ext_terrain_y = u->sprite->ext_terrain_y;
 			if (!us_hidden(t)) set_sprite_visibility(t->sprite, tile_visibility(t->sprite->position));
 			for (image_t* i : ptr(t->sprite->images)) {
 				set_image_heading(i, heading);
+				#ifdef EMSCRIPTEN
+				set_image_offset(i, offset);
+				#endif
 			}
 		}
 	}
@@ -14391,7 +14406,9 @@ void update_units() {
 					});
 				}
 				b->prev_bounce_unit = target;
-				b->ext_src_flying_y = target->sprite->ext_flying_y;
+				if (target) {
+					b->ext_src_flying_y = target->sprite->ext_flying_y;
+				}
 			}
 			if (new_target) {
 				sprite_run_anim(b->sprite, iscript_anims::SpecialState1);

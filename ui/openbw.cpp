@@ -94,6 +94,62 @@ struct main_t
 		ui.reset();
 	}
 
+	void save_initial_state() {
+		auto i = saved_states.find(ui.st.current_frame);
+		if (i == saved_states.end())
+		{
+			auto v = std::make_unique<saved_state>();
+			v->st = copy_state(ui.st);
+			v->action_st = copy_state(ui.action_st, ui.st, v->st);
+			v->apm = ui.apm;
+
+			a_map<int, std::unique_ptr<saved_state>> new_saved_states;
+			new_saved_states[ui.st.current_frame] = std::move(v);
+			while (!saved_states.empty())
+			{
+				auto i = saved_states.begin();
+				auto v = std::move(*i);
+				saved_states.erase(i);
+				new_saved_states[v.first] = std::move(v.second);
+			}
+			std::swap(saved_states, new_saved_states);
+		}
+	}
+
+	void next_replay_frame() {
+		int save_interval = 10 * 1000 / 42;
+		if (ui.st.current_frame == 0 || ui.st.current_frame % save_interval == 0)
+		{
+			auto i = saved_states.find(ui.st.current_frame);
+			if (i == saved_states.end())
+			{
+				auto v = std::make_unique<saved_state>();
+				v->st = copy_state(ui.st);
+				v->action_st = copy_state(ui.action_st, ui.st, v->st);
+				v->apm = ui.apm;
+
+				a_map<int, std::unique_ptr<saved_state>> new_saved_states;
+				new_saved_states[ui.st.current_frame] = std::move(v);
+				while (!saved_states.empty())
+				{
+					auto i = saved_states.begin();
+					auto v = std::move(*i);
+					saved_states.erase(i);
+					new_saved_states[v.first] = std::move(v.second);
+				}
+				std::swap(saved_states, new_saved_states);
+			}
+		}
+
+		ui.replay_functions::next_frame();
+		for (auto &v : ui.apm)
+			v.update(ui.st.current_frame);
+
+		#ifdef EMSCRIPTEN
+		MAIN_THREAD_EM_ASM({ js_callbacks.js_on_replay_frame(); });
+		#endif
+	}
+
 	bool update()
 	{
 
@@ -107,37 +163,6 @@ struct main_t
 			last_fps = now;
 			fps_counter = 0;
 		}
-
-		auto next = [&]()
-		{
-			int save_interval = 10 * 1000 / 42;
-			if (ui.st.current_frame == 0 || ui.st.current_frame % save_interval == 0)
-			{
-				auto i = saved_states.find(ui.st.current_frame);
-				if (i == saved_states.end())
-				{
-					auto v = std::make_unique<saved_state>();
-					v->st = copy_state(ui.st);
-					v->action_st = copy_state(ui.action_st, ui.st, v->st);
-					v->apm = ui.apm;
-
-					a_map<int, std::unique_ptr<saved_state>> new_saved_states;
-					new_saved_states[ui.st.current_frame] = std::move(v);
-					while (!saved_states.empty())
-					{
-						auto i = saved_states.begin();
-						auto v = std::move(*i);
-						saved_states.erase(i);
-						new_saved_states[v.first] = std::move(v.second);
-					}
-					std::swap(saved_states, new_saved_states);
-				}
-			}
-
-			ui.replay_functions::next_frame();
-			for (auto &v : ui.apm)
-				v.update(ui.st.current_frame);
-		};
 
 		if (!ui.is_done() || ui.st.current_frame != ui.replay_frame)
 		{
@@ -162,7 +187,7 @@ struct main_t
 					{
 						for (size_t i2 = 0; i2 != 4 && ui.st.current_frame != ui.replay_frame; ++i2)
 						{
-							next();
+							next_replay_frame();
 						}
 						if (clock.now() - now >= std::chrono::milliseconds(50))
 							break;
@@ -192,7 +217,7 @@ struct main_t
 						last_tick += tick_speed;
 
 						if (!ui.is_done())
-							next();
+							next_replay_frame();
 						else
 							break;
 						if (i % 4 == 3 && clock.now() - now >= std::chrono::milliseconds(50))
@@ -357,9 +382,17 @@ namespace bwgame
 		template <typename file_reader_T = file_reader<>>
 		struct simple_reader
 		{
+			a_string dir_prefix;  // optional directory prefix
+
+			// constructor to set optional directory prefix
+			explicit simple_reader(a_string dir_prefix = "") : dir_prefix(std::move(dir_prefix)) {}
+
 			void operator()(a_vector<uint8_t> &dst, a_string filename)
 			{
-				file_reader_T file = file_reader_T(std::move(filename));
+				// concatenate the directory prefix and filename
+				a_string full_filename = dir_prefix + std::move(filename);
+				
+				file_reader_T file = file_reader_T(std::move(full_filename));
 				size_t len = file.size();
 				dst.resize(len);
 				file.get_bytes(dst.data(), len);
@@ -367,6 +400,8 @@ namespace bwgame
 			}
 		};
 
+
+		
 #ifdef EMSCRIPTEN
 		template <bool default_little_endian = true>
 		struct js_file_reader
@@ -802,6 +837,7 @@ struct util_functions : state_functions
 		}
 		return m->ui.fow.size();
 	}
+
 };
 
 optional<util_functions> m_util_funcs;
@@ -937,6 +973,26 @@ extern "C" int next_frame()
 	return m->ui.st.current_frame;
 }
 
+extern "C" int next_step() //next_no_replay()
+{
+	m->ui.clear_frame();
+	m->ui.next_no_replay();
+	return m->ui.st.current_frame;
+}
+
+extern "C" int next_replay_step()
+{
+	m->save_initial_state();
+
+	m->ui.clear_frame();
+	if (m->ui.replay_functions::is_done()) {
+		return -1;
+	}
+	m->ui.replay_functions::next_frame();
+
+	return m->ui.st.current_frame;
+}
+
 extern "C" void load_replay(const uint8_t *data, size_t len)
 {
 	m->reset();
@@ -990,12 +1046,7 @@ extern "C" void load_replay_with_height_map(const uint8_t *data, size_t len, uin
 	log("ext load replay: %d\n", len);
 }
 
-extern "C" int next_no_replay()
-{
-	m->ui.clear_frame();
-	m->ui.next_no_replay();
-	return m->ui.st.current_frame;
-}
+
 
 extern "C" void generate_frame()
 {
@@ -1029,7 +1080,9 @@ int main()
 #ifdef EMSCRIPTEN
 	auto load_data_file = data_loading::simple_reader<data_loading::js_file_reader<>>();
 #else
-	auto load_data_file = data_loading::data_files_directory("D:\\dev\\openbw\\openbw-original\\openbw-original\\Debug\\");
+	auto load_data_file = data_loading::simple_reader<>("A:\\dev\\bwdata\\");
+
+	// auto load_data_file = data_loading::data_files_directory("C:\\Users\\Game_Master\\Projects\\openbw\\openbw-original\\openbw-original\\Debug");
 #endif
 
 	game_player player(load_data_file);
@@ -1048,7 +1101,7 @@ int main()
 	m.init();
 
 #ifndef EMSCRIPTEN
-	ui.load_replay_file("D:\\last_replay.rep");
+	ui.load_replay_file("G:\\last_replay.rep");
 #endif
 
 #ifdef TITAN_WRITEGIF
